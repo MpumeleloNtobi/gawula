@@ -1,5 +1,7 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
+import { PrismaModule } from "./infrastructure/prisma.module";
+import { RedisModule } from "./infrastructure/redis.module";
 import { IdentityModule } from "./modules/identity/identity.module";
 import { CatalogModule } from "./modules/catalog/catalog.module";
 import { CartModule } from "./modules/cart/cart.module";
@@ -16,6 +18,8 @@ import { HealthController } from "./health.controller";
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    PrismaModule,
+    RedisModule,
     IdentityModule,
     CatalogModule,
     CartModule,

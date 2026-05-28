@@ -11,10 +11,7 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "outDir": "./dist",
-    "baseUrl": "./",
-    "paths": {
-      "@foyer/shared": ["../../packages/shared/src"]
-    }
+    "rootDir": "./src"
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
