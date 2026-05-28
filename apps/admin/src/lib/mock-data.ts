@@ -327,3 +327,16 @@ export function getBrand(id: string) {
 export function getItem(id: string) {
   return MENU_ITEMS.find((m) => m.id === id);
 }
+
+// ── Foyer domain aliases ────────────────────────────────────────────────────
+// The Foyer architecture distinguishes Brand (parent identity) from Outlet
+// (per-complex location) and uses Complex instead of Hub. These aliases let
+// new code use Foyer language while the prototype pages continue to compile.
+// The mock data collapses Brand and Outlet 1:1 — real Outlet/Brand split
+// arrives with the live catalog API in M1.
+export type Outlet = Brand;
+export type Complex = Hub;
+export const OUTLETS = BRANDS;
+export const COMPLEXES = HUBS;
+export const getOutlet = getBrand;
+export const getComplex = (id: string) => HUBS.find((h) => h.id === id);

@@ -7,7 +7,7 @@ import { Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { BRANDS, MENU_ITEMS, getItem } from "@/lib/mock-data";
+import { BRANDS, getItem } from "@/lib/mock-data";
 import { useCart } from "@/lib/cart-store";
 import { formatPrice, cn } from "@/lib/utils";
 
