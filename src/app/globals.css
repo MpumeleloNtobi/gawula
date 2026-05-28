@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 36 33% 97%;
+    --foreground: 20 14% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 20 14% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 14% 12%;
+
+    --primary: 12 88% 52%;
+    --primary-foreground: 36 40% 98%;
+
+    --secondary: 30 25% 94%;
+    --secondary-foreground: 20 14% 18%;
+
+    --muted: 30 20% 94%;
+    --muted-foreground: 20 8% 42%;
+
+    --accent: 30 30% 92%;
+    --accent-foreground: 20 14% 18%;
+
+    --destructive: 0 70% 45%;
+    --destructive-foreground: 36 40% 98%;
+
+    --border: 24 12% 88%;
+    --input: 24 12% 88%;
+    --ring: 12 88% 52%;
+
+    --radius: 1rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html,
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .marquee-track {
+    animation: marquee 32s linear infinite;
+  }
+  .marquee-track-slow {
+    animation: marquee 80s linear infinite;
+  }
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+}
