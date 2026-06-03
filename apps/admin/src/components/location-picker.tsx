@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { MapPin, Search, ArrowRight, Loader2 } from "lucide-react";
+import { MapPin, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { HUBS } from "@/lib/mock-data";
@@ -27,6 +27,12 @@ export function LocationPicker({ className }: { className?: string }) {
     );
   }, [query]);
 
+  const noMatch = query.trim() !== "" && matches.length === 0;
+
+  const goToWaitlist = () => {
+    router.push(`/waitlist?area=${encodeURIComponent(query.trim())}`);
+  };
+
   const handleSelect = (id: string, label: string) => {
     setSelected(id);
     setQuery(label);
@@ -34,6 +40,11 @@ export function LocationPicker({ className }: { className?: string }) {
   };
 
   const handleContinue = () => {
+    if (noMatch) {
+      setLoading(true);
+      goToWaitlist();
+      return;
+    }
     const hub = HUBS.find((h) => h.id === selected) ?? matches[0];
     if (!hub) return;
     setLoading(true);
@@ -43,9 +54,9 @@ export function LocationPicker({ className }: { className?: string }) {
 
   return (
     <div className={cn("relative w-full", className)}>
-      <div className="flex flex-col gap-2 rounded-2xl border bg-card p-2 shadow-lg sm:flex-row sm:items-center sm:p-2.5">
+      <div className="flex items-center gap-2 rounded-full bg-card p-1.5 shadow-lg ring-1 ring-black/5 focus-within:ring-2 focus-within:ring-foreground/20">
         <div className="relative flex-1">
-          <MapPin className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-primary" />
+          <MapPin className="pointer-events-none absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-foreground" />
           <Input
             value={query}
             onChange={(e) => {
@@ -55,14 +66,18 @@ export function LocationPicker({ className }: { className?: string }) {
             }}
             onFocus={() => setOpen(true)}
             onBlur={() => setTimeout(() => setOpen(false), 150)}
-            placeholder="Enter your suburb to find your hub"
-            className="h-12 border-0 bg-transparent pl-10 shadow-none focus-visible:ring-0"
+            placeholder="Enter delivery address"
+            className="h-12 border-0 bg-transparent pl-12 text-base text-foreground placeholder:text-muted-foreground shadow-none focus-visible:ring-0"
           />
         </div>
-        <Button size="lg" className="h-12 shrink-0" onClick={handleContinue} disabled={loading}>
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-          Find food
-          <ArrowRight className="h-4 w-4" />
+        <Button
+          size="lg"
+          className="h-12 shrink-0 rounded-full px-6 text-base font-semibold"
+          onClick={handleContinue}
+          disabled={loading}
+        >
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+          Find Food
         </Button>
       </div>
 
@@ -81,13 +96,34 @@ export function LocationPicker({ className }: { className?: string }) {
                   <div className="flex-1">
                     <div className="font-medium">{hub.area}</div>
                     <div className="text-xs text-muted-foreground">
-                      Served from {hub.name} · {hub.etaMinutes[0]}–{hub.etaMinutes[1]} min
+                      Served from {hub.name}
                     </div>
                   </div>
                 </button>
               </li>
             ))}
           </ul>
+        </div>
+      ) : null}
+
+      {open && noMatch ? (
+        <div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-2xl border bg-popover p-4 shadow-xl">
+          <p className="text-sm font-medium">
+            We are not in {query.trim()} yet.
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Leave your details and we will let you know the moment we go live near you.
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            variant="dark"
+            className="mt-3 rounded-full px-4"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={goToWaitlist}
+          >
+            Register for updates
+          </Button>
         </div>
       ) : null}
     </div>

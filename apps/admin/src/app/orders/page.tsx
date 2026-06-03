@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useOrders, ORDER_STATUSES, statusIndex } from "@/lib/orders-store";
-import { BRANDS, getItem } from "@/lib/mock-data";
+import { BRANDS, STORE_LOCATIONS, getItem } from "@/lib/mock-data";
 import { formatPrice, cn } from "@/lib/utils";
 
 export default function OrdersPage() {
@@ -15,7 +15,7 @@ export default function OrdersPage() {
 
   if (hydrated && orders.length === 0) {
     return (
-      <div className="container max-w-2xl py-16 sm:py-24">
+      <div className="container max-w-2xl pt-16 pb-28 md:py-24">
         <div className="rounded-2xl border bg-card p-10 text-center">
           <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-secondary">
             <ShoppingBag className="h-5 w-5" />
@@ -35,12 +35,12 @@ export default function OrdersPage() {
   }
 
   return (
-    <div className="container max-w-3xl py-8 sm:py-12">
+    <div className="container max-w-3xl pt-8 pb-28 md:py-12">
       <h1 className="text-2xl font-semibold tracking-[-0.02em] sm:text-3xl">
         Your orders
       </h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        Everything you&apos;ve ordered through Tabletop.
+        Everything you&apos;ve ordered through Gawula.
       </p>
 
       <div className="mt-8 space-y-4">
@@ -53,13 +53,19 @@ export default function OrdersPage() {
                 .filter((b): b is string => Boolean(b))
             )
           );
-          const brandNames = brandIds
-            .map((id) => {
-              const b = BRANDS.find((br) => br.id === id);
-              return b?.name.split("—")[1]?.trim() ?? b?.name;
-            })
-            .filter(Boolean)
+          const brandsForOrder = brandIds
+            .map((id) => BRANDS.find((br) => br.id === id))
+            .filter((b): b is (typeof BRANDS)[number] => Boolean(b));
+          const brandNames = brandsForOrder
+            .map((b) => b.name.split("—")[1]?.trim() ?? b.name)
             .join(" · ");
+          const locationId = brandsForOrder[0]?.storeLocationId;
+          const location = locationId
+            ? STORE_LOCATIONS.find((l) => l.id === locationId)
+            : undefined;
+          const tripTitle = location
+            ? `Trip to ${location.name} (${brandsForOrder.length} ${brandsForOrder.length === 1 ? "store" : "stores"})`
+            : brandNames;
           const sIdx = statusIndex(order.status);
           const isActive = order.status !== "delivered";
           return (
@@ -88,7 +94,10 @@ export default function OrdersPage() {
                       #{order.id}
                     </span>
                   </div>
-                  <h2 className="mt-2 truncate text-base font-semibold">{brandNames}</h2>
+                  <h2 className="mt-2 truncate text-base font-semibold">{tripTitle}</h2>
+                  {location ? (
+                    <p className="truncate text-xs text-muted-foreground">{brandNames}</p>
+                  ) : null}
                   <p className="text-xs text-muted-foreground">
                     {created.toLocaleString("en-ZA", {
                       dateStyle: "medium",

@@ -90,16 +90,64 @@ model Item {
 
 model Customer {
   id              String   @id @default(cuid())
-  phone           String   @unique
-  email           String?  @unique
+  email           String   @unique
+  passwordHash    String
+  phone           String?  @unique
   name            String?
+  emailVerifiedAt DateTime?
   mallPassActive  Boolean  @default(false)
   mallPassExpiresAt DateTime?
   createdAt       DateTime @default(now())
 
-  addresses Address[]
-  carts     Cart[]
-  orders    Order[]
+  addresses          Address[]
+  carts              Cart[]
+  orders             Order[]
+  resetTokens        PasswordResetToken[]
+  verificationTokens EmailVerificationToken[]
+  roleGrants         RoleGrant[]
+  riderProfile       Rider?
+  riderApplications  RiderApplication[]
+}
+
+model RoleGrant {
+  id         String    @id @default(cuid())
+  customerId String
+  role       String
+  complexId  String?
+  outletId   String?
+  grantedAt  DateTime  @default(now())
+  revokedAt  DateTime?
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, role])
+  @@index([customerId])
+}
+
+model PasswordResetToken {
+  id         String    @id @default(cuid())
+  customerId String
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+}
+
+model EmailVerificationToken {
+  id         String    @id @default(cuid())
+  customerId String
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
 }
 
 model Address {
@@ -123,19 +171,107 @@ model Address {
 
 model Rider {
   id              String   @id @default(cuid())
+  customerId      String   @unique
   name            String
-  phone           String   @unique
+  phone           String?
   vehicleType     String
   homeComplexId   String
   status          String   @default("offline")
   payoutAccountId String?
   createdAt       DateTime @default(now())
 
-  homeComplex Complex @relation(fields: [homeComplexId], references: [id])
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  homeComplex Complex  @relation(fields: [homeComplexId], references: [id])
   shifts      Shift[]
   trips       Trip[]
+  application RiderApplication?
 
   @@index([homeComplexId])
+}
+
+model RiderApplication {
+  id              String    @id @default(cuid())
+  firstName       String
+  lastName        String
+  email           String
+  phone           String
+  areaId          String
+  areaLabel       String
+  waitlisted      Boolean   @default(false)
+  vehicleType     String
+  hasSmartphone   Boolean   @default(true)
+  idNumber        String
+  idFrontDocName  String?
+  idBackDocName   String?
+  selfieDocName   String?
+  fullBodyDocName String?
+  licenceDocName  String?
+  stage           String    @default("submitted")
+  rejectionReason String?
+  reviewerId      String?
+  riderId         String?   @unique
+  customerId      String?
+  decidedAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  rider    Rider?    @relation(fields: [riderId], references: [id])
+  customer Customer? @relation(fields: [customerId], references: [id])
+
+  @@index([stage])
+  @@index([customerId])
+}
+
+model PartnerApplication {
+  id                     String    @id @default(cuid())
+  storeName              String
+  description            String
+  logoDocName            String?
+  tradeType              String
+  tradeTypeLabel         String
+  locationName           String?
+  address                String
+  areaId                 String
+  areaLabel              String
+  waitlisted             Boolean   @default(false)
+  firstName              String
+  lastName               String
+  storeEmail             String?
+  storePhone             String?
+  contactEmail           String
+  contactPhone           String
+  contactEmailVerifiedAt DateTime?
+  soleProprietor         Boolean   @default(false)
+  registrationNumber     String?
+  registrationDocName    String?
+  storefrontDocName      String?
+  logoData               String?
+  registrationData       String?
+  storefrontData         String?
+  stage                  String    @default("submitted")
+  rejectionReason        String?
+  reviewerId             String?
+  decidedAt              DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  verificationTokens PartnerEmailVerificationToken[]
+
+  @@index([stage])
+  @@index([contactEmail])
+}
+
+model PartnerEmailVerificationToken {
+  id            String    @id @default(cuid())
+  applicationId String
+  tokenHash     String    @unique
+  expiresAt     DateTime
+  usedAt        DateTime?
+  createdAt     DateTime  @default(now())
+
+  application PartnerApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
 }
 
 model Shift {
@@ -157,6 +293,9 @@ model AdminUser {
   email        String   @unique
   passwordHash String
   role         String
+  name         String?
+  complexId    String?
+  outletId     String?
   totpSecret   String?
   createdAt    DateTime @default(now())
 }

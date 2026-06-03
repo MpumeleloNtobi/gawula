@@ -1,0 +1,256 @@
+"use client";
+
+import * as React from "react";
+import { cn } from "@/lib/utils";
+
+export function PageHeading({
+  title,
+  subtitle,
+  action,
+}: {
+  title: string;
+  subtitle?: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="min-w-0">
+        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+        {subtitle ? <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p> : null}
+      </div>
+      {action ? <div className="flex shrink-0 items-center gap-2">{action}</div> : null}
+    </div>
+  );
+}
+
+export function SectionHeading({
+  title,
+  hint,
+  action,
+}: {
+  title: string;
+  hint?: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <div>
+        <h2 className="text-base font-semibold">{title}</h2>
+        {hint ? <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p> : null}
+      </div>
+      {action}
+    </div>
+  );
+}
+
+export function Card({
+  className,
+  padded = true,
+  children,
+}: {
+  className?: string;
+  padded?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <section
+      className={cn(
+        "rounded-2xl border border-border bg-background",
+        padded && "p-5",
+        className
+      )}
+    >
+      {children}
+    </section>
+  );
+}
+
+export function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-border bg-secondary/40 p-5">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="mt-1 text-2xl font-semibold">{value}</p>
+    </div>
+  );
+}
+
+export function StatBar({
+  label,
+  value,
+  pct,
+}: {
+  label: string;
+  value: string;
+  pct: number;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="w-28 shrink-0 truncate text-xs text-muted-foreground">{label}</span>
+      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary">
+        <div
+          className="h-full rounded-full bg-foreground"
+          style={{ width: `${Math.max(0, Math.min(100, pct))}%` }}
+        />
+      </div>
+      <span className="w-16 shrink-0 text-right text-xs tabular-nums text-foreground">{value}</span>
+    </div>
+  );
+}
+
+export function DetailRow({
+  label,
+  value,
+  full,
+}: {
+  label: string;
+  value: string;
+  full?: boolean;
+}) {
+  return (
+    <div className={full ? "sm:col-span-2" : undefined}>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="mt-0.5 text-foreground">{value}</dd>
+    </div>
+  );
+}
+
+export type BadgeTone = "neutral" | "success" | "warning" | "danger" | "info" | "muted";
+
+const BADGE_TONES: Record<BadgeTone, string> = {
+  neutral: "bg-secondary text-foreground",
+  success: "bg-emerald-50 text-emerald-700",
+  warning: "bg-amber-50 text-amber-700",
+  danger: "bg-destructive/10 text-destructive",
+  info: "bg-sky-50 text-sky-700",
+  muted: "bg-secondary/60 text-muted-foreground",
+};
+
+export function StatusBadge({
+  tone = "neutral",
+  children,
+  className,
+  dot,
+}: {
+  tone?: BadgeTone;
+  children: React.ReactNode;
+  className?: string;
+  dot?: boolean;
+}) {
+  const dotTone: Record<BadgeTone, string> = {
+    neutral: "bg-foreground/60",
+    success: "bg-emerald-500",
+    warning: "bg-amber-500",
+    danger: "bg-destructive",
+    info: "bg-sky-500",
+    muted: "bg-muted-foreground/50",
+  };
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium",
+        BADGE_TONES[tone],
+        className
+      )}
+    >
+      {dot ? <span aria-hidden className={cn("h-1.5 w-1.5 rounded-full", dotTone[tone])} /> : null}
+      {children}
+    </span>
+  );
+}
+
+export function EmptyState({
+  title,
+  description,
+  action,
+  icon,
+}: {
+  title: string;
+  description?: string;
+  action?: React.ReactNode;
+  icon?: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border border-dashed border-border bg-secondary/30 px-6 py-12 text-center">
+      {icon ? (
+        <div className="mx-auto mb-3 grid h-10 w-10 place-items-center rounded-full bg-background text-muted-foreground">
+          {icon}
+        </div>
+      ) : null}
+      <p className="text-sm font-medium text-foreground">{title}</p>
+      {description ? (
+        <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">{description}</p>
+      ) : null}
+      {action ? <div className="mt-4">{action}</div> : null}
+    </div>
+  );
+}
+
+export function useFlash() {
+  const [notice, setNotice] = React.useState<string | null>(null);
+  const flash = React.useCallback((msg: string) => {
+    setNotice(msg);
+    window.setTimeout(() => setNotice((n) => (n === msg ? null : n)), 4000);
+  }, []);
+  return { notice, flash };
+}
+
+export function Flash({ message }: { message: string | null }) {
+  if (!message) return null;
+  return (
+    <div
+      role="status"
+      className="pointer-events-none fixed bottom-6 left-1/2 z-50 -translate-x-1/2 animate-slide-in-bottom rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background shadow-lg"
+    >
+      {message}
+    </div>
+  );
+}
+
+export function ErrorState({
+  message,
+  onRetry,
+}: {
+  message?: string | null;
+  onRetry?: () => void;
+}) {
+  return (
+    <div className="rounded-2xl border border-destructive/30 bg-destructive/5 px-5 py-6 text-center">
+      <p className="text-sm font-medium text-foreground">Something went wrong</p>
+      <p className="mt-1 text-sm text-muted-foreground">
+        {message ?? "We couldn't load this data. Please try again."}
+      </p>
+      {onRetry ? (
+        <button
+          type="button"
+          onClick={onRetry}
+          className="mt-4 inline-flex h-9 items-center rounded-full bg-foreground px-4 text-sm font-semibold text-background transition-opacity hover:opacity-90"
+        >
+          Try again
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+const ORDER_STATUS_TONE: Record<string, BadgeTone> = {
+  received: "info",
+  preparing: "warning",
+  ready: "info",
+  on_the_way: "info",
+  delivered: "success",
+  cancelled: "danger",
+};
+
+export function orderStatusTone(status: string): BadgeTone {
+  return ORDER_STATUS_TONE[status] ?? "neutral";
+}
+
+const PAYOUT_STATUS_TONE: Record<string, BadgeTone> = {
+  paid: "success",
+  pending: "warning",
+  failed: "danger",
+};
+
+export function payoutStatusTone(status: string): BadgeTone {
+  return PAYOUT_STATUS_TONE[status] ?? "neutral";
+}

@@ -7,6 +7,7 @@ import { useParams, notFound } from "next/navigation";
 import { MapPin, Clock, CreditCard, Wallet, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { OrderTracker } from "@/components/order-tracker";
+import { cartFulfillmentContext } from "@/lib/cart-store";
 import { useOrders } from "@/lib/orders-store";
 import { BRANDS, getItem } from "@/lib/mock-data";
 import { formatPrice } from "@/lib/utils";
@@ -23,7 +24,7 @@ export default function OrderPage() {
   if (hydrated && !order) notFound();
   if (!order) {
     return (
-      <div className="container max-w-3xl py-16">
+      <div className="container max-w-3xl pt-16 pb-28 md:py-16">
         <div className="rounded-2xl border bg-card p-10 text-center text-sm text-muted-foreground">
           Loading order…
         </div>
@@ -32,6 +33,7 @@ export default function OrderPage() {
   }
 
   const created = new Date(order.createdAt);
+  const fulfillment = cartFulfillmentContext(order.lines);
   const grouped = new Map<string, typeof order.lines>();
   for (const line of order.lines) {
     const item = getItem(line.itemId);
@@ -42,7 +44,7 @@ export default function OrderPage() {
   }
 
   return (
-    <div className="container max-w-5xl py-8 sm:py-12">
+    <div className="container max-w-5xl pt-8 pb-28 md:py-12">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs font-medium tracking-[0.18em] text-muted-foreground">
@@ -106,6 +108,13 @@ export default function OrderPage() {
                   timeStyle: "short",
                 })}
               />
+              {fulfillment ? (
+                <DetailRow
+                  icon={<MapPin className="h-4 w-4" />}
+                  label={fulfillment.isMultiStore ? "Store group" : "Store"}
+                  value={`${fulfillment.locationName} · ${fulfillment.pickupPoint}`}
+                />
+              ) : null}
             </div>
           </section>
 
@@ -143,6 +152,7 @@ export default function OrderPage() {
                                 fill
                                 sizes="48px"
                                 className="object-cover"
+                                unoptimized={item.image.endsWith(".svg")}
                               />
                             </div>
                             <div className="min-w-0 flex-1">
@@ -179,6 +189,14 @@ export default function OrderPage() {
             <dl className="mt-4 space-y-2 text-sm">
               <Row label="Subtotal" value={formatPrice(order.subtotal)} />
               <Row label="Delivery" value={formatPrice(order.deliveryFee)} />
+              {fulfillment?.deliveryQuote.effortFee ? (
+                <div className="rounded-xl bg-secondary/50 px-3 py-2 text-xs text-muted-foreground">
+                  <span className="font-medium text-foreground">
+                    {fulfillment.deliveryQuote.modeLabel}
+                  </span>{" "}
+                  included {formatPrice(fulfillment.deliveryQuote.effortFee)} extra pickup cost.
+                </div>
+              ) : null}
               <Row label="Service fee" value={formatPrice(order.serviceFee)} />
               {order.tipCents > 0 ? (
                 <Row label="Tip" value={formatPrice(order.tipCents)} />

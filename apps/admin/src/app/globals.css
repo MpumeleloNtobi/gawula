@@ -44,6 +44,15 @@
   body {
     @apply bg-background text-foreground antialiased;
   }
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-text-fill-color: hsl(var(--foreground));
+    -webkit-box-shadow: 0 0 0 1000px hsl(var(--secondary)) inset;
+    caret-color: hsl(var(--foreground));
+    transition: background-color 9999s ease-in-out 0s;
+  }
 }
 
 @layer utilities {
@@ -63,8 +72,51 @@
   .marquee-track-slow {
     animation: marquee 80s linear infinite;
   }
+  .wave-dot {
+    animation: wave-dot 1.1s ease-in-out infinite;
+  }
+  @keyframes wave-dot {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.45; }
+    30% { transform: translateY(-0.3rem); opacity: 1; }
+  }
   @keyframes marquee {
     from { transform: translateX(0); }
     to { transform: translateX(-50%); }
+  }
+
+  .gawula-rig {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: gawula-bob 1.8s ease-in-out infinite;
+  }
+  .gawula-wheel {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: gawula-spin 1.3s linear infinite;
+  }
+  .gawula-cloud {
+    animation: gawula-drift 16s linear infinite;
+  }
+  .gawula-cloud-slow {
+    animation: gawula-drift 26s linear infinite;
+  }
+  @keyframes gawula-bob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-7px); }
+  }
+  @keyframes gawula-spin {
+    to { transform: rotate(360deg); }
+  }
+  @keyframes gawula-drift {
+    from { transform: translateX(0); }
+    to { transform: translateX(-520px); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .gawula-rig,
+    .gawula-wheel,
+    .gawula-cloud,
+    .gawula-cloud-slow {
+      animation: none !important;
+    }
   }
 }

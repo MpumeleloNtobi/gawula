@@ -6,10 +6,9 @@ import Image from "next/image";
 import { Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { BRANDS, getItem } from "@/lib/mock-data";
-import { useCart } from "@/lib/cart-store";
-import { formatPrice, cn } from "@/lib/utils";
+import { getDisplayTags, getItem, getMostLikedBadge } from "@/lib/mock-data";
+import { canAddItemToCart, useCart } from "@/lib/cart-store";
+import { formatPrice } from "@/lib/utils";
 
 type Selection = Record<string, string[]>;
 
@@ -19,9 +18,17 @@ export default function ItemPage() {
   const item = getItem(id);
   if (!item) notFound();
 
-  const brand = BRANDS.find((b) => b.id === item.brandId);
   const addLine = useCart((s) => s.addLine);
+  const lines = useCart((s) => s.lines);
   const setDrawerOpen = useCart((s) => s.setDrawerOpen);
+  const mostLikedBadge = getMostLikedBadge(item);
+  const displayTags = getDisplayTags(item);
+  const compatibility = canAddItemToCart(lines, item.id);
+  const compatibilityNotice = !compatibility.ok
+    ? compatibility.reason
+    : lines.length > 0 && compatibility.effortFee
+      ? `${compatibility.label}: ${compatibility.reason} Delivery effort adds ${formatPrice(compatibility.effortFee)}.`
+      : null;
 
   const [selection, setSelection] = useState<Selection>(() => {
     const init: Selection = {};
@@ -73,146 +80,140 @@ export default function ItemPage() {
   }, [item, selection]);
 
   const handleAdd = () => {
-    addLine({
+    const result = addLine({
       itemId: item.id,
       quantity: qty,
       modifiers: selected,
       unitPrice,
       specialInstructions: notes.trim() || undefined,
     });
+    if (!result.ok) return;
     setDrawerOpen(false);
     router.push("/cart");
   };
 
-  const displayBrand = brand?.name.split("—")[1]?.trim() ?? brand?.name;
-
   return (
-    <div className="pb-40">
-      <div className="container max-w-3xl pt-6 sm:pt-10">
-        <div className="overflow-hidden rounded-2xl border bg-card">
-          <div className="relative aspect-[16/10] bg-secondary">
+    <div className="bg-background pb-36">
+      <div className="container grid max-w-6xl gap-8 pt-4 sm:pt-6 lg:grid-cols-[minmax(0,1fr)_430px] lg:items-start lg:gap-12">
+        <div className="lg:sticky lg:top-24">
+          <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-secondary">
             <Image
               src={item.image}
               alt={item.name}
               fill
-              sizes="(min-width: 768px) 768px, 100vw"
+              sizes="(min-width: 1024px) 640px, 100vw"
               className="object-cover"
               priority
             />
           </div>
-          <div className="p-6 sm:p-8">
-            {displayBrand ? (
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <span
-                  className="h-1.5 w-1.5 rounded-full"
-                  style={{ backgroundColor: brand?.logoColor }}
-                  aria-hidden
-                />
-                {displayBrand}
-              </div>
-            ) : null}
-            <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
-              <h1 className="text-2xl font-semibold tracking-[-0.02em] sm:text-3xl">
-                {item.name}
-              </h1>
-              <div className="text-lg font-semibold">{formatPrice(item.price)}</div>
+        </div>
+
+        <div className="pb-4">
+          <section>
+            <div>
+              <h1 className="text-3xl font-semibold leading-tight sm:text-4xl">{item.name}</h1>
+              <div className="mt-2 text-lg font-semibold">{formatPrice(item.price)}</div>
+              <p className="mt-3 text-base leading-7 text-muted-foreground">{item.description}</p>
             </div>
-            <p className="mt-3 text-sm text-muted-foreground sm:text-base">
-              {item.description}
-            </p>
-            {item.tags?.length ? (
-              <div className="mt-4 flex flex-wrap gap-2">
-                {item.tags.map((t) => (
-                  <Badge key={t} variant="secondary">
-                    {t}
-                  </Badge>
+            {mostLikedBadge || displayTags.length ? (
+              <div className="mt-4 flex flex-wrap gap-3 text-sm font-semibold text-muted-foreground">
+                {mostLikedBadge ? (
+                  <span className="text-xs font-semibold text-[#116B35]">
+                    {mostLikedBadge}
+                  </span>
+                ) : null}
+                {displayTags.map((tag) => (
+                  <span key={tag}>{tag}</span>
                 ))}
               </div>
             ) : null}
-          </div>
-        </div>
+          </section>
 
-        {item.modifiers?.length ? (
-          <div className="mt-8 space-y-6">
-            {item.modifiers.map((group) => {
-              const single = group.required;
-              return (
-                <div key={group.id} className="rounded-2xl border bg-card p-6">
-                  <div className="mb-4 flex items-center justify-between">
-                    <h2 className="text-base font-semibold">{group.name}</h2>
-                    <span className="text-xs text-muted-foreground">
-                      {group.required ? "Required" : "Optional"}
-                    </span>
-                  </div>
-                  <div className="space-y-2">
-                    {group.options.map((opt) => {
-                      const checked = (selection[group.id] ?? []).includes(opt.id);
-                      return (
-                        <label
-                          key={opt.id}
-                          className={cn(
-                            "flex cursor-pointer items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm transition-colors",
-                            checked
-                              ? "border-foreground bg-secondary/60"
-                              : "border-border hover:border-foreground/30"
-                          )}
-                        >
-                          <div className="flex items-center gap-3">
-                            <input
-                              type={single ? "radio" : "checkbox"}
-                              name={group.id}
-                              checked={checked}
-                              onChange={() => toggleOption(group.id, opt.id, single)}
-                              className="h-4 w-4 accent-foreground"
-                            />
-                            <span className="font-medium">{opt.name}</span>
-                          </div>
-                          {opt.priceDelta > 0 ? (
-                            <span className="text-muted-foreground">
-                              +{formatPrice(opt.priceDelta)}
+          {item.modifiers?.length ? (
+            <div className="mt-8 space-y-8">
+              {item.modifiers.map((group) => {
+                const single = group.required;
+                return (
+                  <section key={group.id}>
+                    <div className="mb-3 flex items-end justify-between gap-4">
+                      <div>
+                        <h2 className="text-xl font-semibold">Choose {group.name.toLowerCase()}</h2>
+                        <p className="mt-1 text-sm font-semibold text-muted-foreground">
+                          {group.required ? "Required" : "Optional"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="overflow-hidden rounded-lg bg-card">
+                      {group.options.map((opt) => {
+                        const checked = (selection[group.id] ?? []).includes(opt.id);
+                        return (
+                          <label
+                            key={opt.id}
+                            className="flex cursor-pointer items-center justify-between gap-4 px-4 py-4 text-sm transition-colors hover:bg-secondary/40"
+                          >
+                            <div className="flex items-center gap-3">
+                              <input
+                                type={single ? "radio" : "checkbox"}
+                                name={group.id}
+                                checked={checked}
+                                onChange={() => toggleOption(group.id, opt.id, single)}
+                                className="h-4 w-4 accent-foreground"
+                              />
+                              <span className="font-semibold">{opt.name}</span>
+                            </div>
+                            <span className="text-sm font-semibold text-muted-foreground">
+                              {opt.priceDelta > 0 ? `+${formatPrice(opt.priceDelta)}` : "Included"}
                             </span>
-                          ) : null}
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : null}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
+          ) : null}
 
-        <div className="mt-8 rounded-2xl border bg-card p-6">
-          <h2 className="text-base font-semibold">Special instructions</h2>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Tell the kitchen about allergies or preferences.
-          </p>
-          <Textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="e.g. No onions, please."
-            className="mt-3 min-h-[80px]"
-          />
+          <section className="mt-8">
+            <h2 className="text-xl font-semibold">Special instructions</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Allergies, preferences, or anything the kitchen should know.
+            </p>
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="No onions, extra dressing, etc."
+              className="mt-4 min-h-[96px] resize-none rounded-lg border-0 bg-secondary shadow-none focus-visible:ring-2 focus-visible:ring-foreground/15"
+            />
+          </section>
         </div>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 backdrop-blur">
-        <div className="container flex max-w-3xl items-center justify-between gap-4 py-4">
-          <div className="inline-flex items-center gap-1 rounded-full border bg-card p-1">
+      {compatibilityNotice ? (
+        <section className="container max-w-6xl pb-2">
+          <div className="rounded-lg bg-secondary px-4 py-3 text-sm font-semibold text-foreground">
+            {compatibilityNotice}
+          </div>
+        </section>
+      ) : null}
+
+      <div className="fixed inset-x-0 bottom-0 z-30 bg-background/95 shadow-[0_-1px_0_rgba(0,0,0,0.08)] backdrop-blur">
+        <div className="container flex max-w-6xl items-center justify-between gap-4 py-4">
+          <div className="inline-flex h-12 items-center rounded-full bg-secondary p-1">
             <button
               type="button"
               onClick={() => setQty((q) => Math.max(1, q - 1))}
               aria-label="Decrease quantity"
-              className="grid h-9 w-9 place-items-center rounded-full hover:bg-secondary"
+              className="grid h-10 w-10 place-items-center rounded-full hover:bg-background"
             >
               <Minus className="h-4 w-4" />
             </button>
-            <span className="w-6 text-center text-sm font-semibold">{qty}</span>
+            <span className="w-7 text-center text-sm font-semibold">{qty}</span>
             <button
               type="button"
               onClick={() => setQty((q) => q + 1)}
               aria-label="Increase quantity"
-              className="grid h-9 w-9 place-items-center rounded-full hover:bg-secondary"
+              className="grid h-10 w-10 place-items-center rounded-full hover:bg-background"
             >
               <Plus className="h-4 w-4" />
             </button>
@@ -220,10 +221,11 @@ export default function ItemPage() {
           <Button
             variant="dark"
             size="lg"
-            className="flex-1 justify-between"
+            className="h-12 flex-1 justify-between rounded-full px-5 sm:max-w-md"
             onClick={handleAdd}
+            disabled={!compatibility.ok}
           >
-            <span>Add to basket</span>
+            <span>Add to cart</span>
             <span>{formatPrice(unitPrice * qty)}</span>
           </Button>
         </div>

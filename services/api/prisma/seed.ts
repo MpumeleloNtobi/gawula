@@ -1,8 +1,15 @@
 import { PrismaClient } from "@prisma/client";
+import { hashPassword } from "../src/modules/identity/password.util";
 
 const prisma = new PrismaClient();
 
 async function main() {
+  if (process.env.NODE_ENV === "production" && process.env.ALLOW_PROD_SEED !== "true") {
+    throw new Error(
+      "Refusing to run QA seed in production. Set ALLOW_PROD_SEED=true to override (not recommended).",
+    );
+  }
+
   console.log("Seeding Foyer dev data…");
 
   const sandtonCity = await prisma.complex.upsert({
@@ -67,7 +74,164 @@ async function main() {
     }
   }
 
+  const emberOutletId = `${sandtonCity.id}:ember`;
+  await seedTestUsers(sandtonCity.id, emberOutletId);
+  await seedSampleOrder(sandtonCity.id);
+
   console.log("Seed complete.");
+}
+
+async function seedSampleOrder(complexId: string) {
+  const existing = await prisma.order.findUnique({ where: { id: "seed-order-1" } });
+  if (existing) return;
+
+  const customer = await prisma.customer.findUnique({ where: { email: "customer@qa.test" } });
+  if (!customer) return;
+  const address = await prisma.address.findFirst({ where: { customerId: customer.id } });
+  if (!address) return;
+
+  const emberOutletId = `${complexId}:ember`;
+  const doughOutletId = `${complexId}:dough`;
+
+  await prisma.order.create({
+    data: {
+      id: "seed-order-1",
+      customerId: customer.id,
+      complexId,
+      addressId: address.id,
+      status: "ready",
+      foodSubtotalCents: 24400,
+      deliveryFeeCents: 4500,
+      serviceFeeCents: 0,
+      tipCents: 1000,
+      totalCents: 29900,
+      paymentIntentId: "pi_sim_seed",
+      subOrders: {
+        create: [
+          {
+            outletId: emberOutletId,
+            status: "ready",
+            pickupCode: "742",
+            readyAt: new Date(),
+            foodSubtotalCents: 11900,
+            commissionCents: 1547,
+            orderItems: {
+              create: {
+                itemId: `${emberOutletId}:classic-smash`,
+                qty: 1,
+                modifiers: [],
+                unitPriceCents: 11900,
+                totalCents: 11900,
+              },
+            },
+          },
+          {
+            outletId: doughOutletId,
+            status: "ready",
+            pickupCode: "318",
+            readyAt: new Date(),
+            foodSubtotalCents: 12500,
+            commissionCents: 1625,
+            orderItems: {
+              create: {
+                itemId: `${doughOutletId}:margherita`,
+                qty: 1,
+                modifiers: [],
+                unitPriceCents: 12500,
+                totalCents: 12500,
+              },
+            },
+          },
+        ],
+      },
+    },
+  });
+
+  console.log("Sample paid order seeded (seed-order-1) ready for dispatch.");
+}
+
+async function seedTestUsers(complexId: string, partnerOutletId: string) {
+  const password = await hashPassword("qa-password");
+
+  const customer = await prisma.customer.upsert({
+    where: { email: "customer@qa.test" },
+    update: { name: "Thandi Test", phone: "0820000001", passwordHash: password, emailVerifiedAt: new Date() },
+    create: {
+      email: "customer@qa.test",
+      passwordHash: password,
+      name: "Thandi Test",
+      phone: "0820000001",
+      emailVerifiedAt: new Date(),
+    },
+  });
+  const existingAddress = await prisma.address.findFirst({ where: { customerId: customer.id } });
+  if (!existingAddress) {
+    await prisma.address.create({
+      data: {
+        customerId: customer.id,
+        label: "Home",
+        line1: "12 Maude Street",
+        suburb: "Sandown",
+        city: "Johannesburg",
+        postalCode: "2196",
+        lat: -26.1052,
+        lng: 28.0561,
+        instructions: "Leave at reception, call on arrival.",
+      },
+    });
+  }
+
+  const riderCustomer = await prisma.customer.upsert({
+    where: { email: "rider@qa.test" },
+    update: { name: "Sipho Rider", phone: "0820000002", passwordHash: password, emailVerifiedAt: new Date() },
+    create: {
+      email: "rider@qa.test",
+      passwordHash: password,
+      name: "Sipho Rider",
+      phone: "0820000002",
+      emailVerifiedAt: new Date(),
+    },
+  });
+
+  await prisma.roleGrant.upsert({
+    where: { customerId_role: { customerId: riderCustomer.id, role: "rider" } },
+    update: {},
+    create: { customerId: riderCustomer.id, role: "rider" },
+  });
+
+  await prisma.rider.upsert({
+    where: { customerId: riderCustomer.id },
+    update: { name: "Sipho Rider", phone: "0820000002", homeComplexId: complexId },
+    create: {
+      customerId: riderCustomer.id,
+      name: "Sipho Rider",
+      phone: "0820000002",
+      vehicleType: "motorbike",
+      homeComplexId: complexId,
+      status: "offline",
+    },
+  });
+
+  await prisma.adminUser.upsert({
+    where: { email: "admin@qa.test" },
+    update: { name: "Admin", role: "admin", passwordHash: password },
+    create: { email: "admin@qa.test", name: "Admin", role: "admin", passwordHash: password },
+  });
+
+  await prisma.adminUser.upsert({
+    where: { email: "partner@qa.test" },
+    update: { name: "Ember & Char Manager", role: "partner", passwordHash: password, complexId, outletId: partnerOutletId },
+    create: {
+      email: "partner@qa.test",
+      name: "Ember & Char Manager",
+      role: "partner",
+      passwordHash: password,
+      complexId,
+      outletId: partnerOutletId,
+    },
+  });
+
+  console.log("Test users: customer@qa.test / rider@qa.test / partner@qa.test / admin@qa.test (password: qa-password)");
 }
 
 function weekdayHours(open: string, close: string) {

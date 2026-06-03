@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { useCart } from "@/lib/cart-store";
-import { BRANDS, MenuItem } from "@/lib/mock-data";
+import { BRANDS, MenuItem, getDisplayTags, getMostLikedBadge } from "@/lib/mock-data";
 import { formatPrice } from "@/lib/utils";
 
 type Props = {
@@ -16,6 +16,7 @@ export function MenuItemCard({ item }: Props) {
   const setDrawerOpen = useCart((s) => s.setDrawerOpen);
   const brand = BRANDS.find((b) => b.id === item.brandId);
   const requiresModifiers = item.modifiers?.some((g) => g.required);
+  const displayBadge = getMostLikedBadge(item) ?? getDisplayTags(item)[0];
 
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -44,15 +45,15 @@ export function MenuItemCard({ item }: Props) {
           sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
           className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
         />
-        {item.tags?.length ? (
-          <div className="absolute left-3 top-3 inline-flex items-center rounded-full bg-background/95 px-2.5 py-1 text-[11px] font-medium shadow-sm backdrop-blur">
-            {item.tags[0]}
+        {displayBadge ? (
+          <div className="absolute left-3 top-3 text-[11px] font-medium text-white drop-shadow-sm">
+            {displayBadge}
           </div>
         ) : null}
         <button
           type="button"
           onClick={requiresModifiers ? undefined : handleQuickAdd}
-          aria-label={requiresModifiers ? "Customise and add" : "Add to basket"}
+          aria-label={requiresModifiers ? "Customise and add" : "Add to cart"}
           className="absolute bottom-3 right-3 grid h-10 w-10 place-items-center rounded-full bg-foreground text-background shadow-md transition-transform hover:scale-105"
         >
           <Plus className="h-5 w-5" />

@@ -29,10 +29,6 @@ export function OrderTracker({ orderId, status, createdAt }: Props) {
     return () => clearTimeout(t);
   }, [orderId, status, advance]);
 
-  const elapsed = Math.max(0, Date.now() - createdAt);
-  const etaSeconds = Math.max(0, 40 * 60 - Math.floor(elapsed / 1000));
-  const etaMin = Math.floor(etaSeconds / 60);
-
   return (
     <div className="rounded-2xl border bg-card p-6 sm:p-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -44,16 +40,6 @@ export function OrderTracker({ orderId, status, createdAt }: Props) {
             {ORDER_STATUSES[currentIndex]?.label ?? "Received"}
           </h2>
         </div>
-        {status !== "delivered" ? (
-          <div className="text-right">
-            <p className="text-xs tracking-[0.18em] text-muted-foreground">
-              Estimated arrival
-            </p>
-            <p className="mt-1 text-base font-semibold">
-              {etaMin > 0 ? `${etaMin} min` : "Any moment now"}
-            </p>
-          </div>
-        ) : null}
       </div>
 
       <ol className="mt-8 space-y-4">
