@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useParams, useRouter, notFound } from "next/navigation";
 import Image from "next/image";
-import { Minus, Plus } from "lucide-react";
+import { LuMinus as Minus, LuPlus as Plus } from "react-icons/lu";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { getDisplayTags, getItem, getMostLikedBadge } from "@/lib/mock-data";
@@ -27,7 +27,7 @@ export default function ItemPage() {
   const compatibilityNotice = !compatibility.ok
     ? compatibility.reason
     : lines.length > 0 && compatibility.effortFee
-      ? `${compatibility.label}: ${compatibility.reason} Delivery effort adds ${formatPrice(compatibility.effortFee)}.`
+      ? `${compatibility.reason} Delivery effort adds ${formatPrice(compatibility.effortFee)}.`
       : null;
 
   const [selection, setSelection] = useState<Selection>(() => {

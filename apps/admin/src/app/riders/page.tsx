@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Clock, Route, Wallet } from "lucide-react";
+import { LuClock as Clock, LuRoute as Route, LuWallet as Wallet } from "react-icons/lu";
 import { Button } from "@/components/ui/button";
 
 export const metadata = {
@@ -65,7 +65,7 @@ export default function RidersPage() {
             preserveAspectRatio="xMidYMid slice"
             className="h-full w-full"
             role="img"
-            aria-label="Illustration of a Gawula courier cycling with a delivery box"
+            aria-label="Illustration of a Gawula rider cycling with a delivery box"
           >
             <defs>
               <linearGradient id="riderSky" x1="0" y1="0" x2="0" y2="1">
@@ -116,7 +116,7 @@ export default function RidersPage() {
               <g
                 fill="none"
                 stroke="#2A1A12"
-                strokeWidth="7"
+               
                 strokeLinecap="round"
                 strokeLinejoin="round"
               >
@@ -131,10 +131,10 @@ export default function RidersPage() {
 
               <ellipse cx="226" cy="286" rx="14" ry="6" fill="#2A1A12" />
 
-              <g stroke="#2A1A12" strokeWidth="12" strokeLinecap="round">
+              <g stroke="#2A1A12" strokeLinecap="round">
                 <line x1="226" y1="290" x2="266" y2="244" />
               </g>
-              <g stroke="#2A1A12" strokeWidth="9" strokeLinecap="round" fill="none">
+              <g stroke="#2A1A12" strokeLinecap="round" fill="none">
                 <line x1="266" y1="246" x2="302" y2="298" />
                 <line x1="226" y1="292" x2="248" y2="330" />
                 <line x1="248" y1="330" x2="240" y2="360" />
@@ -147,9 +147,9 @@ export default function RidersPage() {
               <rect x="293" y="223" width="10" height="6" rx="3" fill="#2A1A12" opacity="0.5" />
 
               <g className="gawula-wheel">
-                <circle cx="176" cy="358" r="33" fill="none" stroke="#2A1A12" strokeWidth="7" />
+                <circle cx="176" cy="358" r="33" fill="none" stroke="#2A1A12" />
                 <circle cx="176" cy="358" r="5" fill="#2A1A12" />
-                <g stroke="#2A1A12" strokeWidth="3" opacity="0.55">
+                <g stroke="#2A1A12" opacity="0.55">
                   <line x1="176" y1="328" x2="176" y2="388" />
                   <line x1="146" y1="358" x2="206" y2="358" />
                   <line x1="155" y1="337" x2="197" y2="379" />
@@ -157,9 +157,9 @@ export default function RidersPage() {
                 </g>
               </g>
               <g className="gawula-wheel">
-                <circle cx="306" cy="358" r="33" fill="none" stroke="#2A1A12" strokeWidth="7" />
+                <circle cx="306" cy="358" r="33" fill="none" stroke="#2A1A12" />
                 <circle cx="306" cy="358" r="5" fill="#2A1A12" />
-                <g stroke="#2A1A12" strokeWidth="3" opacity="0.55">
+                <g stroke="#2A1A12" opacity="0.55">
                   <line x1="306" y1="328" x2="306" y2="388" />
                   <line x1="276" y1="358" x2="336" y2="358" />
                   <line x1="285" y1="337" x2="327" y2="379" />
@@ -178,7 +178,7 @@ export default function RidersPage() {
         <div className="mt-10 grid gap-5 sm:grid-cols-3">
           {BENEFITS.map((benefit) => (
             <div key={benefit.title} className="flex flex-col items-center rounded-2xl bg-secondary/50 p-6 text-center">
-              <benefit.Icon className="h-7 w-7 text-primary" strokeWidth={2} />
+              <benefit.Icon className="h-7 w-7 text-primary" />
               <h3 className="mt-5 text-lg font-semibold tracking-tight">{benefit.title}</h3>
               <p className="mt-2 text-base text-muted-foreground">{benefit.body}</p>
             </div>

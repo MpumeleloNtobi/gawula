@@ -21,9 +21,100 @@ export type AdminOrder = {
   placedAt: string;
 };
 
+export type AdminSubOrderItem = {
+  id: string;
+  name: string;
+  qty: number;
+  totalCents: number;
+};
+
+export type AdminSubOrder = {
+  id: string;
+  outletId: string;
+  outletName: string;
+  status: string;
+  cancelReason: string | null;
+  foodSubtotalCents: number;
+  items: AdminSubOrderItem[];
+};
+
+export type AdminAuditEntry = {
+  id: string;
+  action: string;
+  reason: string | null;
+  note: string | null;
+  actorEmail: string | null;
+  createdAt: string;
+};
+
+export type AdminOrderTrip = {
+  id: string;
+  status: string;
+  riderId: string;
+  riderName: string;
+};
+
+export type AdminOrderDetail = {
+  id: string;
+  complexName: string;
+  customerName: string;
+  status: string;
+  paid: boolean;
+  totalCents: number;
+  foodSubtotalCents: number;
+  deliveryFeeCents: number;
+  serviceFeeCents: number;
+  tipCents: number;
+  placedAt: string;
+  cancelledAt: string | null;
+  cancelReason: string | null;
+  refundCents: number;
+  refundedAt: string | null;
+  refundReason: string | null;
+  address: {
+    label: string;
+    line1: string;
+    suburb: string | null;
+    city: string;
+  };
+  trip: AdminOrderTrip | null;
+  subOrders: AdminSubOrder[];
+  auditLog: AdminAuditEntry[];
+};
+
+export type AdminRiderOption = {
+  id: string;
+  name: string;
+  phone: string | null;
+  status: string;
+  complexName: string;
+};
+
+export const SUB_ORDER_STATUS_LABEL: Record<string, string> = {
+  pending: "Pending",
+  accepted: "Accepted",
+  preparing: "Preparing",
+  ready: "Ready",
+  collected: "Collected",
+  rejected: "Rejected",
+  cancelled: "Cancelled",
+};
+
+export const ADMIN_SUB_ORDER_STATUSES = [
+  "pending",
+  "accepted",
+  "preparing",
+  "ready",
+  "collected",
+  "rejected",
+  "cancelled",
+] as const;
+
 export type RiderApplication = {
   id: string;
   name: string;
+  firstName?: string;
+  lastName?: string;
   email: string;
   phone: string;
   areaLabel: string;
@@ -31,10 +122,28 @@ export type RiderApplication = {
   vehicleType: string;
   hasSmartphone: boolean;
   idNumber: string;
+  idFrontDocName?: string | null;
+  idBackDocName?: string | null;
+  selfieDocName?: string | null;
+  fullBodyDocName?: string | null;
+  licenceDocName?: string | null;
   stage: "submitted" | "approved" | "rejected";
   rejectionReason: string | null;
   createdAt: string;
   decidedAt: string | null;
+};
+
+export type BulkApplicationResult = {
+  id: string;
+  ok: boolean;
+  message?: string;
+  stage?: string;
+  waitlisted?: boolean;
+  riderId?: string;
+};
+
+export type BulkApplicationResponse = {
+  results: BulkApplicationResult[];
 };
 
 export type PartnerStage = "submitted" | "in-review" | "verification" | "live" | "rejected";

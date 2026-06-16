@@ -1,8 +1,9 @@
 "use client";
 
-import { use } from "react";
+import { use, useEffect } from "react";
 import { useAuth } from "@/lib/auth-store";
 import { useApiData } from "@/lib/use-api-data";
+import { connectRealtime, releaseRealtime } from "@/lib/realtime";
 import { RoleGate } from "@/components/role-gate";
 import { formatPrice } from "@/lib/utils";
 
@@ -48,14 +49,27 @@ export default function TrackPage({ params }: { params: Promise<{ id: string }> 
 
 function Tracker({ orderId }: { orderId: string }) {
   const token = useAuth((s) => s.token);
-  const { data: order, error } = useApiData<OrderDetail>(`/orders/${orderId}`, {
+  const { data: order, error, refresh } = useApiData<OrderDetail>(`/orders/${orderId}`, {
     token,
-    pollMs: 4000,
+    pollMs: 20000,
   });
   const { data: notifications } = useApiData<Notification[]>("/notifications", {
     token,
-    pollMs: 4000,
+    pollMs: 20000,
   });
+
+  useEffect(() => {
+    if (!token) return;
+    const socket = connectRealtime(token);
+    const onUpdate = (payload: { orderId: string }) => {
+      if (payload?.orderId === orderId) refresh();
+    };
+    socket.on("customer.order.updated", onUpdate);
+    return () => {
+      socket.off("customer.order.updated", onUpdate);
+      releaseRealtime();
+    };
+  }, [token, orderId, refresh]);
 
   if (error) {
     return <p className="container py-10 text-sm text-destructive">{error}</p>;

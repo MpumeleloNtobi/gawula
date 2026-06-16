@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { LuInfo as Info } from "react-icons/lu";
 import { cn } from "@/lib/utils";
 
 export function PageHeading({
@@ -65,11 +66,90 @@ export function Card({
   );
 }
 
-export function Stat({ label, value }: { label: string; value: string }) {
+export function Panel({
+  title,
+  action,
+  children,
+  className,
+}: {
+  title: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
-    <div className="rounded-2xl border border-border bg-secondary/40 p-5">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 text-2xl font-semibold">{value}</p>
+    <section className={cn("rounded-2xl border border-border bg-background", className)}>
+      <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+        <h2 className="text-sm font-semibold">{title}</h2>
+        {action ?? null}
+      </div>
+      <div className="px-4 py-4">{children}</div>
+    </section>
+  );
+}
+
+export function TableShell({
+  children,
+  minWidth = "min-w-[720px]",
+  className,
+}: {
+  children: React.ReactNode;
+  minWidth?: string;
+  className?: string;
+}) {
+  return (
+    <section className="overflow-x-auto">
+      <table
+        className={cn(
+          "w-full text-sm [&_td:first-child]:pl-0 [&_td:last-child]:pr-0 [&_th:first-child]:pl-0 [&_th:last-child]:pr-0",
+          minWidth,
+          className
+        )}
+      >
+        {children}
+      </table>
+    </section>
+  );
+}
+
+export const tableHeadClass = "border-b-2 border-border/50 text-left text-sm text-muted-foreground";
+export const tableRowClass = "border-b-2 border-border/50 transition-colors last:border-0 hover:bg-secondary/40";
+export const tableCellClass = "px-4 py-3";
+
+export function StatRow({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mb-12 mt-6 grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-4">
+      {children}
+    </div>
+  );
+}
+
+export function Stat({
+  label,
+  value,
+  icon,
+  hint,
+  tooltip,
+}: {
+  label: string;
+  value: string;
+  icon?: React.ReactNode;
+  hint?: string;
+  tooltip?: string;
+}) {
+  return (
+    <div>
+      <p className="text-3xl font-semibold tabular-nums">{value}</p>
+      <div className="mt-0.5 flex items-center gap-1.5">
+        <span className="text-sm font-semibold text-muted-foreground">{label}</span>
+        {tooltip ? (
+          <span title={tooltip} className="inline-flex cursor-help text-muted-foreground/70 transition-colors hover:text-foreground">
+            <Info className="h-3.5 w-3.5" />
+            <span className="sr-only">{tooltip}</span>
+          </span>
+        ) : null}
+      </div>
+      {hint ? <p className="mt-1.5 text-sm text-muted-foreground">{hint}</p> : null}
     </div>
   );
 }
@@ -92,7 +172,7 @@ export function StatBar({
           style={{ width: `${Math.max(0, Math.min(100, pct))}%` }}
         />
       </div>
-      <span className="w-16 shrink-0 text-right text-xs tabular-nums text-foreground">{value}</span>
+      <span className="w-24 shrink-0 text-right text-xs tabular-nums text-foreground">{value}</span>
     </div>
   );
 }
@@ -117,12 +197,12 @@ export function DetailRow({
 export type BadgeTone = "neutral" | "success" | "warning" | "danger" | "info" | "muted";
 
 const BADGE_TONES: Record<BadgeTone, string> = {
-  neutral: "bg-secondary text-foreground",
-  success: "bg-emerald-50 text-emerald-700",
-  warning: "bg-amber-50 text-amber-700",
-  danger: "bg-destructive/10 text-destructive",
-  info: "bg-sky-50 text-sky-700",
-  muted: "bg-secondary/60 text-muted-foreground",
+  neutral: "text-foreground",
+  success: "text-emerald-700",
+  warning: "text-amber-700",
+  danger: "text-destructive",
+  info: "text-primary",
+  muted: "text-muted-foreground",
 };
 
 export function StatusBadge({
@@ -141,13 +221,13 @@ export function StatusBadge({
     success: "bg-emerald-500",
     warning: "bg-amber-500",
     danger: "bg-destructive",
-    info: "bg-sky-500",
+    info: "bg-primary",
     muted: "bg-muted-foreground/50",
   };
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium",
+        "inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-medium",
         BADGE_TONES[tone],
         className
       )}
@@ -160,9 +240,6 @@ export function StatusBadge({
 
 export function EmptyState({
   title,
-  description,
-  action,
-  icon,
 }: {
   title: string;
   description?: string;
@@ -170,18 +247,7 @@ export function EmptyState({
   icon?: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-dashed border-border bg-secondary/30 px-6 py-12 text-center">
-      {icon ? (
-        <div className="mx-auto mb-3 grid h-10 w-10 place-items-center rounded-full bg-background text-muted-foreground">
-          {icon}
-        </div>
-      ) : null}
-      <p className="text-sm font-medium text-foreground">{title}</p>
-      {description ? (
-        <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">{description}</p>
-      ) : null}
-      {action ? <div className="mt-4">{action}</div> : null}
-    </div>
+    <div className="py-16 text-center text-sm text-muted-foreground">{title}</div>
   );
 }
 

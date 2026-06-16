@@ -3,9 +3,6 @@ import { Type } from "class-transformer";
 
 export class CreateCartDto {
   @IsString()
-  customerId!: string;
-
-  @IsString()
   complexId!: string;
 }
 

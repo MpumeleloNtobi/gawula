@@ -9,9 +9,10 @@ type StoreLogoProps = {
   color: string;
   logoUrl?: string;
   className?: string;
+  noBorder?: boolean;
 };
 
-export function StoreLogo({ name, initials, color, logoUrl, className }: StoreLogoProps) {
+export function StoreLogo({ name, initials, color, logoUrl, className, noBorder }: StoreLogoProps) {
   const [failed, setFailed] = React.useState(false);
   const showLogo = Boolean(logoUrl && !failed);
 
@@ -21,7 +22,9 @@ export function StoreLogo({ name, initials, color, logoUrl, className }: StoreLo
       aria-label={`${name} logo`}
       className={cn(
         "relative grid shrink-0 place-items-center overflow-hidden rounded-full",
-        showLogo ? "border border-border bg-white dark:bg-zinc-900" : "text-xs font-semibold text-white",
+        showLogo
+          ? noBorder ? "bg-white dark:bg-zinc-900" : "border border-border bg-white dark:bg-zinc-900"
+          : "text-xs font-semibold text-white",
         className,
       )}
       style={showLogo ? undefined : { backgroundColor: color }}

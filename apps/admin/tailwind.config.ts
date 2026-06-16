@@ -48,6 +48,11 @@ const config: Config = {
           DEFAULT: "hsl(var(--popover))",
           foreground: "hsl(var(--popover-foreground))",
         },
+        ink: "hsl(var(--ink))",
+        tile: "hsl(var(--tile))",
+        slip: "hsl(var(--slip))",
+        mango: "hsl(var(--mango))",
+        chalk: "hsl(var(--chalk))",
       },
       borderRadius: {
         "2xl": "calc(var(--radius) + 0.25rem)",
@@ -82,6 +87,13 @@ const config: Config = {
       },
       fontFamily: {
         sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
+        display: [
+          "var(--font-bricolage)",
+          "var(--font-geist-sans)",
+          "system-ui",
+          "sans-serif",
+        ],
+        mono: ["var(--font-plex-mono)", "ui-monospace", "monospace"],
       },
     },
   },

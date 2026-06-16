@@ -141,9 +141,13 @@ function resolvePlannedRoute(locations: StoreLocation[]) {
 type CartState = {
   hub: string | null;
   address: string | null;
+  coords: { lat: number; lng: number } | null;
   lines: CartLine[];
   drawerOpen: boolean;
+  hydrated: boolean;
+  setHydrated: () => void;
   setHub: (hubId: string, address: string) => void;
+  setCoords: (coords: { lat: number; lng: number } | null) => void;
   addLine: (line: Omit<CartLine, "lineId">) => AddLineResult;
   updateQuantity: (lineId: string, qty: number) => void;
   removeLine: (lineId: string) => void;
@@ -156,9 +160,13 @@ export const useCart = create<CartState>()(
     (set, get) => ({
       hub: null,
       address: null,
+      coords: null,
       lines: [],
       drawerOpen: false,
+      hydrated: false,
+      setHydrated: () => set({ hydrated: true }),
       setHub: (hubId, address) => set({ hub: hubId, address }),
+      setCoords: (coords) => set({ coords }),
       addLine: (line) => {
         const compatibility = canAddItemToCart(get().lines, line.itemId);
         if (!compatibility.ok) return compatibility;
@@ -218,6 +226,7 @@ export const useCart = create<CartState>()(
         }
         return { ...state, lines: merged } as never;
       },
+      onRehydrateStorage: () => (state) => state?.setHydrated(),
     }
   )
 );
@@ -436,4 +445,23 @@ export function linesByBrand(lines: CartLine[]) {
     groups.set(item.brandId, arr);
   }
   return groups;
+}
+
+export type ResolvedOrderLine = { outletId: string; itemId: string; qty: number; notes?: string };
+
+export function resolveOrderLines(lines: CartLine[], complexId: string): ResolvedOrderLine[] {
+  const resolved: ResolvedOrderLine[] = [];
+  for (const line of lines) {
+    const item = MENU_ITEMS.find((m) => m.id === line.itemId);
+    if (!item) continue;
+    const outletId = `${complexId}:${item.brandId}`;
+    const slug = item.id.slice(item.id.indexOf("-") + 1);
+    resolved.push({
+      outletId,
+      itemId: `${outletId}:${slug}`,
+      qty: line.quantity,
+      notes: line.specialInstructions || undefined,
+    });
+  }
+  return resolved;
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { LuX as X } from "react-icons/lu";
 
 const BOX = 288;
 const OUTPUT = 512;
@@ -107,10 +108,22 @@ export function LogoCropper({
         className="w-full max-w-sm rounded-2xl bg-background p-5 shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
-        <p className="text-base font-semibold">Position your logo</p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Your whole logo fits at the lowest zoom. Zoom in and drag to crop closer.
-        </p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-base font-semibold">Position your logo</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Your whole logo fits at the lowest zoom. Zoom in and drag to crop closer.
+            </p>
+          </div>
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={onCancel}
+            className="-mr-1 inline-grid h-9 w-9 flex-none place-items-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
         <div className="mt-4 flex justify-center">
           <div
             className="relative cursor-grab touch-none select-none overflow-hidden rounded-full bg-secondary active:cursor-grabbing"
@@ -150,13 +163,6 @@ export function LogoCropper({
           className="mt-5 w-full cursor-pointer appearance-none bg-transparent [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-none [&::-moz-range-thumb]:bg-primary [&::-moz-range-track]:h-1.5 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:border-none [&::-moz-range-track]:bg-muted-foreground/10 [&::-webkit-slider-runnable-track]:h-1.5 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:border-none [&::-webkit-slider-runnable-track]:bg-muted-foreground/10 [&::-webkit-slider-thumb]:-mt-[5px] [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary"
         />
         <div className="mt-5 flex items-center justify-end gap-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-lg px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Cancel
-          </button>
           <button
             type="button"
             onClick={handleApply}

@@ -22,7 +22,7 @@ const authCopy = {
     action: "Sign in",
     busy: "Signing in",
     switchText: "New to Gawula?",
-    switchHref: "/signup",
+    switchHref: "/sign-up",
     switchLabel: "Sign up",
   },
   signup: {
@@ -30,7 +30,7 @@ const authCopy = {
     action: "Create account",
     busy: "Creating account",
     switchText: "Already have an account?",
-    switchHref: "/login",
+    switchHref: "/sign-in",
     switchLabel: "Sign in",
   },
 };
@@ -56,6 +56,7 @@ export function AuthPage({ mode }: AuthPageProps) {
   const searchParams = useSearchParams();
   const next = searchParams.get("next");
   const login = useAuth((s) => s.login);
+  const staffLogin = useAuth((s) => s.staffLogin);
   const customerSignup = useAuth((s) => s.customerSignup);
   const copy = authCopy[mode];
 
@@ -151,13 +152,17 @@ export function AuthPage({ mode }: AuthPageProps) {
         });
         router.push(next ?? "/menu");
       } else {
-        await login(email.trim(), password);
+        await login(email.trim(), password).catch(async (err) => {
+          if (err instanceof ApiError && (err.status === 401 || err.status === 400)) {
+            return staffLogin(email.trim(), password);
+          }
+          throw err;
+        });
         const active = useAuth.getState().activeRole ?? "customer";
         router.push(next ?? homePathForRole(active));
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong, please try again");
-    } finally {
       setBusy(false);
     }
   };

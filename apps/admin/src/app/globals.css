@@ -2,6 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer components {
+  @media (min-width: 640px) {
+    .container {
+      padding-left: 1.5rem;
+      padding-right: 1.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .container {
+      padding-left: 2.5rem;
+      padding-right: 2.5rem;
+    }
+  }
+}
+
 @layer base {
   :root {
     --background: 36 33% 97%;
@@ -33,6 +49,12 @@
     --ring: 12 88% 52%;
 
     --radius: 1rem;
+
+    --ink: 18 12% 9%;
+    --tile: 42 40% 97%;
+    --slip: 36 24% 88%;
+    --mango: 36 100% 61%;
+    --chalk: 0 0% 100%;
   }
 }
 
@@ -52,6 +74,15 @@
     -webkit-box-shadow: 0 0 0 1000px hsl(var(--secondary)) inset;
     caret-color: hsl(var(--foreground));
     transition: background-color 9999s ease-in-out 0s;
+  }
+}
+
+@layer base {
+  .recharts-wrapper,
+  .recharts-wrapper *,
+  .recharts-surface,
+  .recharts-surface * {
+    outline: none !important;
   }
 }
 
@@ -77,7 +108,7 @@
   }
   @keyframes wave-dot {
     0%, 60%, 100% { transform: translateY(0); opacity: 0.45; }
-    30% { transform: translateY(-0.3rem); opacity: 1; }
+    30% { transform: translateY(-0.4rem); opacity: 1; }
   }
   @keyframes marquee {
     from { transform: translateX(0); }

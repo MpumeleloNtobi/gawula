@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { LuChevronRight as ChevronRight } from "react-icons/lu";
 import { NearbyShopLogo } from "@/components/nearby-shop";
 import { SHOPS_NEAR_YOU, shopSlug } from "@/components/nearby-shop-data";
 
@@ -29,7 +29,7 @@ export default function AllStoresPage() {
                     <div className="mt-0.5 text-xs font-semibold text-[#e11900]">{shop.badge}</div>
                   ) : null}
                 </div>
-                <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" strokeWidth={2.2} />
+                <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
               </Link>
             </li>
           ))}

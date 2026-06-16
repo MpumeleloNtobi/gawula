@@ -1,39 +1,78 @@
 "use client";
 
 import * as React from "react";
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown, Search } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { LuBan as Ban, LuBike as Bike, LuChevronDown as ChevronDown, LuChevronLeft as ChevronLeft, LuChevronRight as ChevronRight, LuChevronsUpDown as ChevronsUpDown, LuReceiptText as ReceiptText, LuWallet as Wallet } from "react-icons/lu";
 import { useAuth } from "@/lib/auth-store";
 import { useApiData } from "@/lib/use-api-data";
 import { cn, formatPrice } from "@/lib/utils";
-import { Input } from "@/components/ui/input";
+import { Dropdown } from "@/components/ui/dropdown";
 import { Skeleton } from "@/components/ui/skeleton";
 import { type AdminOrder, STATUS_LABEL, STATUS_ORDER } from "../_lib/types";
-import { ErrorState, PageHeading, StatusBadge, orderStatusTone } from "../_components/ui";
-import { OrderDetailDrawer } from "../_components/order-detail-drawer";
+import {
+  ErrorState,
+  PageHeading,
+  Stat,
+  StatRow,
+  StatusBadge,
+  TableShell,
+  orderStatusTone,
+  tableCellClass,
+  tableHeadClass,
+  tableRowClass,
+} from "../_components/ui";
 
-const FILTERS = ["all", ...STATUS_ORDER];
 const PAGE_SIZE = 12;
 
-type SortKey = "placedAt" | "customerName" | "complexName" | "status" | "totalCents";
+type SortKey = "placedAt" | "customerName" | "complexName" | "status" | "riderName" | "paid" | "totalCents";
+type SortDir = "asc" | "desc";
+type SortCriterion = { key: SortKey; dir: SortDir };
+
+type PaidFilter = "all" | "paid" | "pending";
+type ColumnFilters = {
+  order: string;
+  customer: string;
+  complex: string;
+  rider: string;
+  paid: PaidFilter;
+};
+
+const EMPTY_FILTERS: ColumnFilters = {
+  order: "",
+  customer: "",
+  complex: "",
+  rider: "",
+  paid: "all",
+};
+
+const PAID_FILTER_OPTIONS = [
+  { value: "all", label: "All" },
+  { value: "paid", label: "Paid" },
+  { value: "pending", label: "Pending" },
+];
+
+const STATUS_FILTER_OPTIONS = [
+  { value: "all", label: "All" },
+  ...STATUS_ORDER.map((s) => ({ value: s, label: STATUS_LABEL[s] ?? s })),
+];
 
 const STATUS_RANK: Record<string, number> = Object.fromEntries(
   STATUS_ORDER.map((s, i) => [s, i])
 );
 
 export default function AdminOrdersPage() {
+  const router = useRouter();
   const token = useAuth((s) => s.token);
   const { data: orders, error, refresh } = useApiData<AdminOrder[]>("/admin/orders", {
     token,
     pollMs: 5000,
   });
-  const [query, setQuery] = React.useState("");
+  const [filters, setFilters] = React.useState<ColumnFilters>(EMPTY_FILTERS);
   const [status, setStatus] = React.useState("all");
-  const [sort, setSort] = React.useState<{ key: SortKey; dir: "asc" | "desc" }>({
-    key: "placedAt",
-    dir: "desc",
-  });
+  const [sorts, setSorts] = React.useState<SortCriterion[]>([
+    { key: "placedAt", dir: "desc" },
+  ]);
   const [page, setPage] = React.useState(1);
-  const [selected, setSelected] = React.useState<AdminOrder | null>(null);
 
   const counts = React.useMemo(() => {
     const map: Record<string, number> = { all: orders?.length ?? 0 };
@@ -41,37 +80,56 @@ export default function AdminOrdersPage() {
     return map;
   }, [orders]);
 
+  const activeOrders = (orders ?? []).filter((order) => order.status !== "delivered" && order.status !== "cancelled");
+  const unassignedOrders = activeOrders.filter((order) => !order.riderName).length;
+  const orderRevenueCents = (orders ?? []).reduce((sum, order) => sum + order.totalCents, 0);
+
   const filtered = React.useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const f = {
+      order: filters.order.trim().toLowerCase(),
+      customer: filters.customer.trim().toLowerCase(),
+      complex: filters.complex.trim().toLowerCase(),
+      rider: filters.rider.trim().toLowerCase(),
+    };
     const rows = (orders ?? []).filter((o) => {
       if (status !== "all" && o.status !== status) return false;
-      if (!q) return true;
-      return (
-        o.id.toLowerCase().includes(q) ||
-        o.customerName.toLowerCase().includes(q) ||
-        o.complexName.toLowerCase().includes(q) ||
-        (o.riderName ?? "").toLowerCase().includes(q)
-      );
-    });
-    const dir = sort.dir === "asc" ? 1 : -1;
-    return [...rows].sort((a, b) => {
-      let cmp = 0;
-      switch (sort.key) {
-        case "totalCents":
-          cmp = a.totalCents - b.totalCents;
-          break;
-        case "status":
-          cmp = (STATUS_RANK[a.status] ?? 0) - (STATUS_RANK[b.status] ?? 0);
-          break;
-        case "placedAt":
-          cmp = new Date(a.placedAt).getTime() - new Date(b.placedAt).getTime();
-          break;
-        default:
-          cmp = a[sort.key].localeCompare(b[sort.key]);
+      if (f.order) {
+        const needle = f.order.replace(/^#/, "");
+        const shortId = o.id.slice(-5).toLowerCase();
+        if (!shortId.includes(needle) && !o.id.toLowerCase().includes(needle)) return false;
       }
-      return cmp * dir;
+      if (f.customer && !o.customerName.toLowerCase().includes(f.customer)) return false;
+      if (f.complex && !o.complexName.toLowerCase().includes(f.complex)) return false;
+      if (f.rider && !(o.riderName ?? "Unassigned").toLowerCase().includes(f.rider)) return false;
+      if (filters.paid === "paid" && !o.paid) return false;
+      if (filters.paid === "pending" && o.paid) return false;
+      return true;
     });
-  }, [orders, query, status, sort]);
+    const compareByKey = (a: AdminOrder, b: AdminOrder, key: SortKey) => {
+      switch (key) {
+        case "totalCents":
+          return a.totalCents - b.totalCents;
+        case "status":
+          return (STATUS_RANK[a.status] ?? 0) - (STATUS_RANK[b.status] ?? 0);
+        case "placedAt":
+          return new Date(a.placedAt).getTime() - new Date(b.placedAt).getTime();
+        case "paid":
+          return Number(a.paid) - Number(b.paid);
+        case "riderName":
+          return (a.riderName ?? "Unassigned").localeCompare(b.riderName ?? "Unassigned");
+        default:
+          return a[key].localeCompare(b[key]);
+      }
+    };
+    const active = sorts.length > 0 ? sorts : [{ key: "placedAt" as SortKey, dir: "desc" as SortDir }];
+    return [...rows].sort((a, b) => {
+      for (const { key, dir } of active) {
+        const cmp = compareByKey(a, b, key);
+        if (cmp !== 0) return cmp * (dir === "asc" ? 1 : -1);
+      }
+      return 0;
+    });
+  }, [orders, filters, status, sorts]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount);
@@ -79,48 +137,35 @@ export default function AdminOrdersPage() {
 
   React.useEffect(() => {
     setPage(1);
-  }, [query, status, sort]);
+  }, [filters, status, sorts]);
+
+  const filtersActive =
+    status !== "all" ||
+    filters.paid !== "all" ||
+    Boolean(filters.order || filters.customer || filters.complex || filters.rider);
 
   const toggleSort = (key: SortKey) =>
-    setSort((s) =>
-      s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "desc" }
-    );
+    setSorts((prev) => {
+      const existing = prev.find((s) => s.key === key);
+      if (!existing) return [...prev, { key, dir: "desc" }];
+      if (existing.dir === "desc") {
+        return prev.map((s) => (s.key === key ? { key, dir: "asc" } : s));
+      }
+      return prev.filter((s) => s.key !== key);
+    });
+
+  const sortActive = sorts.length > 0;
 
   return (
     <main>
       <PageHeading title="Orders" />
 
-      <div className="mt-6 flex flex-col gap-3">
-        <div className="relative w-full sm:max-w-sm">
-          <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by order, customer, complex or rider"
-            className="h-10 rounded-full border-0 bg-secondary pl-10 pr-4 text-sm shadow-none focus-visible:ring-2 focus-visible:ring-foreground/15"
-          />
-        </div>
-        <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
-          {FILTERS.map((f) => (
-            <button
-              key={f}
-              type="button"
-              onClick={() => setStatus(f)}
-              className={cn(
-                "inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
-                status === f
-                  ? "bg-foreground text-background"
-                  : "bg-secondary text-muted-foreground hover:text-foreground"
-              )}
-            >
-              {f === "all" ? "All" : STATUS_LABEL[f] ?? f}
-              <span className={cn(status === f ? "text-background/80" : "text-foreground")}>
-                {counts[f] ?? 0}
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
+      <StatRow>
+        <Stat label="Active orders" value={orders ? String(activeOrders.length) : "-"} icon={<ReceiptText />} />
+        <Stat label="Unassigned" value={orders ? String(unassignedOrders) : "-"} icon={<Bike />} />
+        <Stat label="Cancelled" value={orders ? String(counts.cancelled ?? 0) : "-"} icon={<Ban />} />
+        <Stat label="Revenue" value={orders ? formatPrice(orderRevenueCents) : "-"} icon={<Wallet />} />
+      </StatRow>
 
       {error && !orders ? (
         <div className="mt-4">
@@ -128,34 +173,111 @@ export default function AdminOrdersPage() {
         </div>
       ) : (
         <>
-          <div className="mt-4 overflow-hidden rounded-2xl border border-border bg-background">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[760px] text-sm">
-                <thead className="border-b border-border bg-secondary/40 text-left text-xs text-muted-foreground">
+          {filtersActive || sortActive ? (
+            <div className="mb-2 flex min-h-5 items-center justify-end gap-4">
+              {filtersActive ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStatus("all");
+                    setFilters(EMPTY_FILTERS);
+                  }}
+                  className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  Clear filters
+                </button>
+              ) : null}
+              {sortActive ? (
+                <button
+                  type="button"
+                  onClick={() => setSorts([])}
+                  className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  Clear sort
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+          <div>
+            <TableShell minWidth="min-w-[820px]">
+                <thead className={tableHeadClass}>
                   <tr>
-                    <SortHeader label="Order" sortKey="placedAt" sort={sort} onSort={toggleSort} />
+                    <SortHeader label="Order" sortKey="placedAt" sorts={sorts} onSort={toggleSort} />
                     <SortHeader
                       label="Customer"
                       sortKey="customerName"
-                      sort={sort}
+                      sorts={sorts}
                       onSort={toggleSort}
                     />
                     <SortHeader
                       label="Complex"
                       sortKey="complexName"
-                      sort={sort}
+                      sorts={sorts}
                       onSort={toggleSort}
                     />
-                    <SortHeader label="Status" sortKey="status" sort={sort} onSort={toggleSort} />
-                    <th scope="col" className="px-4 py-3 font-medium">Rider</th>
-                    <th scope="col" className="px-4 py-3 font-medium">Paid</th>
+                    <SortHeader label="Status" sortKey="status" sorts={sorts} onSort={toggleSort} />
+                    <SortHeader label="Rider" sortKey="riderName" sorts={sorts} onSort={toggleSort} />
+                    <SortHeader label="Paid" sortKey="paid" sorts={sorts} onSort={toggleSort} />
                     <SortHeader
                       label="Total"
                       sortKey="totalCents"
-                      sort={sort}
+                      sorts={sorts}
                       onSort={toggleSort}
                       align="right"
                     />
+                  </tr>
+                  <tr>
+                    <th className="px-4 pb-3 align-top">
+                      <FilterInput
+                        label="Filter by order"
+                        value={filters.order}
+                        onChange={(v) => setFilters((s) => ({ ...s, order: v }))}
+                      />
+                    </th>
+                    <th className="px-4 pb-3 align-top">
+                      <FilterInput
+                        label="Filter by customer"
+                        value={filters.customer}
+                        onChange={(v) => setFilters((s) => ({ ...s, customer: v }))}
+                      />
+                    </th>
+                    <th className="px-4 pb-3 align-top">
+                      <FilterInput
+                        label="Filter by complex"
+                        value={filters.complex}
+                        onChange={(v) => setFilters((s) => ({ ...s, complex: v }))}
+                      />
+                    </th>
+                    <th className="px-4 pb-3 align-top">
+                      <Dropdown
+                        ariaLabel="Filter by status"
+                        value={status}
+                        onSelect={setStatus}
+                        options={STATUS_FILTER_OPTIONS}
+                        radio
+                        triggerClassName="h-8 w-full rounded-md px-2 text-xs font-normal"
+                        listClassName="max-h-none overflow-visible"
+                      />
+                    </th>
+                    <th className="px-4 pb-3 align-top">
+                      <FilterInput
+                        label="Filter by rider"
+                        value={filters.rider}
+                        onChange={(v) => setFilters((s) => ({ ...s, rider: v }))}
+                      />
+                    </th>
+                    <th className="px-4 pb-3 align-top">
+                      <Dropdown
+                        ariaLabel="Filter by payment"
+                        value={filters.paid}
+                        onSelect={(v) => setFilters((s) => ({ ...s, paid: v as PaidFilter }))}
+                        options={PAID_FILTER_OPTIONS}
+                        radio
+                        triggerClassName="h-8 w-full rounded-md px-2 text-xs font-normal"
+                        listClassName="max-h-none overflow-visible"
+                      />
+                    </th>
+                    <th className="px-4 pb-3 align-top" aria-hidden />
                   </tr>
                 </thead>
                 <tbody>
@@ -177,14 +299,14 @@ export default function AdminOrdersPage() {
                           tabIndex={0}
                           role="button"
                           aria-label={`View order #${o.id.slice(-5).toUpperCase()}`}
-                          onClick={() => setSelected(o)}
+                          onClick={() => router.push(`/admin/orders/${o.id}`)}
                           onKeyDown={(e) => {
                             if (e.key === "Enter" || e.key === " ") {
                               e.preventDefault();
-                              setSelected(o);
+                              router.push(`/admin/orders/${o.id}`);
                             }
                           }}
-                          className="cursor-pointer border-b border-border outline-none transition-colors last:border-0 hover:bg-secondary/40 focus-visible:bg-secondary/40"
+                          className={cn("cursor-pointer align-top outline-none focus-visible:bg-secondary/40", tableRowClass)}
                         >
                           <td className="whitespace-nowrap px-4 py-3 font-medium">
                             #{o.id.slice(-5).toUpperCase()}
@@ -192,7 +314,6 @@ export default function AdminOrdersPage() {
                           <td className="px-4 py-3">{o.customerName}</td>
                           <td className="px-4 py-3 text-muted-foreground">
                             {o.complexName}
-                            {o.outletCount > 1 ? ` · ${o.outletCount} stores` : ""}
                           </td>
                           <td className="px-4 py-3">
                             <StatusBadge tone={orderStatusTone(o.status)} dot>
@@ -214,21 +335,20 @@ export default function AdminOrdersPage() {
                       ))}
                   {orders && filtered.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">
-                        {orders.length === 0 ? "No orders yet." : "No orders match your filters."}
+                      <td colSpan={7} className="py-16 text-center text-sm text-muted-foreground">
+                        {orders.length === 0 ? "No orders yet" : "No orders match your filters"}
                       </td>
                     </tr>
                   )}
                 </tbody>
-              </table>
-            </div>
+            </TableShell>
           </div>
 
           {orders && filtered.length > 0 ? (
             <div className="mt-3 flex items-center justify-between gap-3">
               <p className="text-sm text-muted-foreground">
                 Showing {(safePage - 1) * PAGE_SIZE + 1}
-                {"\u2013"}
+                {" to "}
                 {Math.min(safePage * PAGE_SIZE, filtered.length)} of {filtered.length}
               </p>
               {pageCount > 1 ? (
@@ -260,34 +380,57 @@ export default function AdminOrdersPage() {
           ) : null}
         </>
       )}
-
-      <OrderDetailDrawer order={selected} onClose={() => setSelected(null)} />
     </main>
+  );
+}
+
+function FilterInput({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <input
+      type="text"
+      aria-label={label}
+      placeholder="Filter"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="h-8 w-full min-w-[80px] rounded-md border border-border bg-background px-2 text-xs font-normal text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-foreground/15"
+    />
   );
 }
 
 function SortHeader({
   label,
   sortKey,
-  sort,
+  sorts,
   onSort,
   align,
 }: {
   label: string;
   sortKey: SortKey;
-  sort: { key: SortKey; dir: "asc" | "desc" };
+  sorts: SortCriterion[];
   onSort: (key: SortKey) => void;
   align?: "right";
 }) {
-  const active = sort.key === sortKey;
+  const index = sorts.findIndex((s) => s.key === sortKey);
+  const active = index >= 0;
+  const dir = active ? sorts[index].dir : null;
+  const showRank = active && sorts.length > 1;
   return (
     <th
       scope="col"
       className={cn("px-4 py-3 font-medium", align === "right" && "text-right")}
-      aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
+      aria-sort={active ? (dir === "asc" ? "ascending" : "descending") : "none"}
     >
       <button
         type="button"
+        title="Click to sort. Click again to reverse, once more to remove."
         onClick={() => onSort(sortKey)}
         className={cn(
           "inline-flex items-center gap-1 transition-colors hover:text-foreground",
@@ -298,11 +441,16 @@ function SortHeader({
         {label}
         {active ? (
           <ChevronDown
-            className={cn("h-3.5 w-3.5 transition-transform", sort.dir === "asc" && "rotate-180")}
+            className={cn("h-3.5 w-3.5 transition-transform", dir === "asc" && "rotate-180")}
           />
         ) : (
           <ChevronsUpDown className="h-3.5 w-3.5 opacity-50" />
         )}
+        {showRank ? (
+          <span className="grid h-4 min-w-4 place-items-center rounded-full bg-secondary px-1 text-[10px] font-semibold tabular-nums text-muted-foreground">
+            {index + 1}
+          </span>
+        ) : null}
       </button>
     </th>
   );

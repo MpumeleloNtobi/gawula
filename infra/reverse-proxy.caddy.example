@@ -1,0 +1,16 @@
+# Host-level reverse proxy example. Run Caddy on the host, NOT in compose,
+# because the existing app already owns ports 80/443.
+# The Gawula containers publish on loopback ports (admin 3000, api 4001);
+# this vhost fronts them with TLS. Caddy fetches Let's Encrypt certs
+# automatically. Replace the domains below, then add these blocks to your
+# host Caddyfile (typically /etc/caddy/Caddyfile) and reload Caddy.
+
+app.gawula.co.za {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:3000
+}
+
+api.gawula.co.za {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:4001
+}

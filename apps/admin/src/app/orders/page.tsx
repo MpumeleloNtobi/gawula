@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ShoppingBag } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useOrders, ORDER_STATUSES, statusIndex } from "@/lib/orders-store";
-import { BRANDS, STORE_LOCATIONS, getItem } from "@/lib/mock-data";
+import { BRANDS, getItem } from "@/lib/mock-data";
+import { StoreLogo } from "@/components/store-logo";
 import { formatPrice, cn } from "@/lib/utils";
 
 export default function OrdersPage() {
@@ -15,33 +14,15 @@ export default function OrdersPage() {
 
   if (hydrated && orders.length === 0) {
     return (
-      <div className="container max-w-2xl pt-16 pb-28 md:py-24">
-        <div className="rounded-2xl border bg-card p-10 text-center">
-          <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-secondary">
-            <ShoppingBag className="h-5 w-5" />
-          </div>
-          <h1 className="mt-4 text-2xl font-semibold tracking-[-0.02em]">
-            No orders yet
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Your past orders will show up here once you check out.
-          </p>
-          <Button asChild variant="dark" size="lg" className="mt-6">
-            <Link href="/menu">Browse restaurants</Link>
-          </Button>
-        </div>
+      <div className="container max-w-2xl py-24 text-center text-sm text-muted-foreground">
+        No orders yet
       </div>
     );
   }
 
   return (
     <div className="container max-w-3xl pt-8 pb-28 md:py-12">
-      <h1 className="text-2xl font-semibold tracking-[-0.02em] sm:text-3xl">
-        Your orders
-      </h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Everything you&apos;ve ordered through Gawula.
-      </p>
+      <h1 className="text-2xl font-semibold sm:text-3xl">Your orders</h1>
 
       <div className="mt-8 space-y-4">
         {orders.map((order) => {
@@ -56,64 +37,53 @@ export default function OrdersPage() {
           const brandsForOrder = brandIds
             .map((id) => BRANDS.find((br) => br.id === id))
             .filter((b): b is (typeof BRANDS)[number] => Boolean(b));
-          const brandNames = brandsForOrder
-            .map((b) => b.name.split("—")[1]?.trim() ?? b.name)
-            .join(" · ");
-          const locationId = brandsForOrder[0]?.storeLocationId;
-          const location = locationId
-            ? STORE_LOCATIONS.find((l) => l.id === locationId)
-            : undefined;
-          const tripTitle = location
-            ? `Trip to ${location.name} (${brandsForOrder.length} ${brandsForOrder.length === 1 ? "store" : "stores"})`
-            : brandNames;
           const sIdx = statusIndex(order.status);
           const isActive = order.status !== "delivered";
+
           return (
             <Link
               key={order.id}
               href={`/orders/${order.id}`}
-              className="group block overflow-hidden rounded-2xl border bg-card transition-all hover:border-foreground/30 hover:shadow-sm"
+              className="group block rounded-2xl bg-secondary p-5 transition-opacity hover:opacity-80"
             >
-              <div className="flex flex-wrap items-center justify-between gap-4 p-5">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={cn(
-                        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium tracking-[0.12em]",
-                        isActive
-                          ? "bg-primary/10 text-primary"
-                          : "bg-secondary text-muted-foreground"
-                      )}
-                    >
-                      {isActive ? (
-                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
-                      ) : null}
-                      {ORDER_STATUSES[sIdx]?.label ?? "Received"}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      #{order.id}
-                    </span>
-                  </div>
-                  <h2 className="mt-2 truncate text-base font-semibold">{tripTitle}</h2>
-                  {location ? (
-                    <p className="truncate text-xs text-muted-foreground">{brandNames}</p>
-                  ) : null}
-                  <p className="text-xs text-muted-foreground">
-                    {created.toLocaleString("en-ZA", {
-                      dateStyle: "medium",
-                      timeStyle: "short",
-                    })}{" "}
-                    · {order.lines.reduce((s, l) => s + l.quantity, 0)} items
-                  </p>
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex gap-2">
+                  {brandsForOrder.map((brand) => {
+                    const displayName = brand.name.split("—")[1]?.trim() ?? brand.name;
+                    const initials = displayName
+                      .split(/\s+/)
+                      .filter((p) => p !== "&")
+                      .slice(0, 2)
+                      .map((p) => p[0])
+                      .join("");
+                    return (
+                      <StoreLogo
+                        key={brand.id}
+                        name={displayName}
+                        initials={initials}
+                        color={brand.logoColor}
+                        logoUrl={brand.logoUrl}
+                        className="h-10 w-10 rounded-full text-xs"
+                      />
+                    );
+                  })}
                 </div>
-                <div className="text-right">
-                  <div className="text-base font-semibold">
-                    {formatPrice(order.total)}
-                  </div>
-                  <span className="text-xs text-muted-foreground group-hover:text-foreground">
-                    View details →
-                  </span>
-                </div>
+                <span
+                  className={cn(
+                    "shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold",
+                    isActive
+                      ? "bg-primary/10 text-primary"
+                      : "bg-background text-muted-foreground"
+                  )}
+                >
+                  {ORDER_STATUSES[sIdx]?.label ?? "Received"}
+                </span>
+              </div>
+
+              <div className="mt-3">
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {created.toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" })}
+                </p>
               </div>
             </Link>
           );

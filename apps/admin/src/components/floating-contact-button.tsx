@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Headphones, Mail } from "lucide-react";
+import { LuHeadset as Headset, LuMail as Mail } from "react-icons/lu";
 
 const emailHref = "mailto:hello@gawula.co.za?subject=Gawula%20support";
 const whatsappHref = `https://wa.me/?text=${encodeURIComponent("Hi Gawula support")}`;
@@ -70,7 +70,7 @@ export function FloatingContactButton() {
         className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-black text-white shadow-lg transition-transform hover:scale-105"
         onClick={() => setOpen((current) => !current)}
       >
-        <Headphones className="h-5 w-5" />
+        <Headset className="h-5 w-5" />
       </button>
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { LuX as X } from "react-icons/lu";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -51,6 +52,15 @@ export function RejectDialog({
         <h3 id="reject-title" className="text-base font-semibold">
           {title}
         </h3>
+        <button
+          type="button"
+          aria-label="Close"
+          onClick={onCancel}
+          disabled={busy}
+          className="absolute right-4 top-4 inline-grid h-9 w-9 place-items-center rounded-full text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+        >
+          <X className="h-5 w-5" />
+        </button>
         <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
         <Textarea
           ref={ref}
@@ -61,16 +71,13 @@ export function RejectDialog({
           disabled={busy}
         />
         <div className="mt-4 flex justify-end gap-2">
-          <Button variant="secondary" size="sm" onClick={onCancel} disabled={busy}>
-            Cancel
-          </Button>
           <Button
             variant="destructive"
             size="sm"
             onClick={() => onConfirm(reason.trim())}
             disabled={!valid || busy}
           >
-            {busy ? "Rejecting…" : "Reject application"}
+            {busy ? "Rejecting..." : "Reject application"}
           </Button>
         </div>
       </div>

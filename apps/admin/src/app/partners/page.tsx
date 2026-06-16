@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { LineChart, Percent, Store } from "lucide-react";
+import { LuChartLine as LineChart, LuPercent as Percent } from "react-icons/lu";
+import { MdOutlineStorefront as Store } from "react-icons/md";
 import { Button } from "@/components/ui/button";
 
 export const metadata = {
@@ -83,7 +84,7 @@ export default function PartnersPage() {
                 d="M214 252 q-34 12 -42 72"
                 fill="none"
                 stroke="#EF5A2A"
-                strokeWidth="17"
+               
                 strokeLinecap="round"
               />
               <circle cx="176" cy="324" r="10" fill="#F2C29B" />
@@ -94,7 +95,7 @@ export default function PartnersPage() {
                 d="M210 248 q30 20 60 0"
                 fill="none"
                 stroke="#2A1A12"
-                strokeWidth="4"
+               
                 opacity="0.2"
               />
 
@@ -107,7 +108,7 @@ export default function PartnersPage() {
                 d="M233 222 q7 6 14 0"
                 fill="none"
                 stroke="#2A1A12"
-                strokeWidth="3"
+               
                 strokeLinecap="round"
               />
 
@@ -115,7 +116,7 @@ export default function PartnersPage() {
                 d="M268 250 q42 4 58 44"
                 fill="none"
                 stroke="#EF5A2A"
-                strokeWidth="17"
+               
                 strokeLinecap="round"
               />
               <circle cx="324" cy="300" r="10" fill="#F2C29B" />
@@ -124,7 +125,7 @@ export default function PartnersPage() {
             <g>
               <rect x="120" y="332" width="240" height="14" rx="4" fill="#2A1A12" />
               <rect x="128" y="346" width="224" height="46" fill="#FFFFFF" />
-              <g stroke="#2A1A12" strokeWidth="3" opacity="0.12">
+              <g stroke="#2A1A12" opacity="0.12">
                 <line x1="196" y1="346" x2="196" y2="392" />
                 <line x1="284" y1="346" x2="284" y2="392" />
               </g>
@@ -132,7 +133,7 @@ export default function PartnersPage() {
 
             <g className="gawula-rig">
               <rect x="298" y="282" width="54" height="50" rx="9" fill="#EF5A2A" />
-              <path d="M298 304 h54" stroke="#FFFFFF" strokeWidth="4" opacity="0.5" />
+              <path d="M298 304 h54" stroke="#FFFFFF" opacity="0.5" />
               <rect x="317" y="298" width="16" height="16" rx="3" fill="#FFFFFF" />
             </g>
           </svg>
@@ -146,7 +147,7 @@ export default function PartnersPage() {
         <div className="mt-10 grid gap-5 sm:grid-cols-3">
           {BENEFITS.map((benefit) => (
             <div key={benefit.title} className="flex flex-col items-center rounded-2xl bg-secondary/50 p-6 text-center">
-              <benefit.Icon className="h-7 w-7 text-primary" strokeWidth={2} />
+              <benefit.Icon className="h-7 w-7 text-primary" />
               <h3 className="mt-5 text-lg font-semibold tracking-tight">{benefit.title}</h3>
               <p className="mt-2 text-base text-muted-foreground">{benefit.body}</p>
             </div>

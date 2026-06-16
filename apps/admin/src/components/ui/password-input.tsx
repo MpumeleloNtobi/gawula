@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Eye, EyeClosed } from "lucide-react";
+import { LuEye as Eye, LuEyeOff as EyeClosed } from "react-icons/lu";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 

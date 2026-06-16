@@ -4,8 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BRANDS, HUBS, RESTAURANT_BRAND_IDS } from "@/lib/mock-data";
 
-const HIDDEN_ROUTES = ["/login", "/signup", "/verify-email"];
-const HIDDEN_PREFIXES = ["/rider", "/admin", "/partner"];
+const HIDDEN_ROUTES = ["/sign-in", "/sign-up", "/verify-email"];
+const HIDDEN_PREFIXES = [
+  "/rider",
+  "/rider-demo",
+  "/admin",
+  "/store",
+  "/store",
+];
 
 export function SiteFooter() {
   const pathname = usePathname();

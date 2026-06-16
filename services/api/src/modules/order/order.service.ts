@@ -14,21 +14,30 @@ import {
   type TripStatus,
 } from "@foyer/shared";
 import { PrismaService } from "../../infrastructure/prisma.module";
+import { RealtimeGateway } from "../realtime/realtime.gateway";
 import { PlaceOrderDto } from "./order.dto";
 
 const SUBORDER_TRANSITIONS: Record<string, SubOrderStatus[]> = {
   pending: ["accepted", "rejected"],
   accepted: ["preparing", "rejected"],
-  preparing: ["ready"],
-  ready: ["collected"],
+  preparing: ["ready", "rejected"],
+  ready: ["collected", "rejected"],
   collected: [],
   rejected: [],
   cancelled: [],
 };
 
+const PICKUP_MAX_ATTEMPTS = 3;
+const PICKUP_LOCK_MINUTES = 15;
+
+type AdminActor = { id: string; email?: string | null };
+
 @Injectable()
 export class OrderService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly realtime: RealtimeGateway,
+  ) {}
 
   async place(customerId: string, dto: PlaceOrderDto) {
     if (dto.lines.length === 0) {
@@ -144,7 +153,17 @@ export class OrderService {
           }),
         },
       },
+      include: { subOrders: true },
     });
+
+    for (const sub of order.subOrders) {
+      try {
+        const payload = await this.listOneSubOrder(sub.id);
+        this.realtime.emitStoreOrderNew(sub.outletId, payload);
+      } catch {
+        // best-effort; never block order placement on realtime errors
+      }
+    }
 
     return this.getForCustomer(customerId, order.id);
   }
@@ -192,7 +211,6 @@ export class OrderService {
       id: s.id,
       orderId: s.orderId,
       status: s.status,
-      pickupCode: s.pickupCode,
       foodSubtotalCents: s.foodSubtotalCents,
       placedAt: s.order.placedAt,
       customerName: s.order.customer.name,
@@ -201,6 +219,7 @@ export class OrderService {
         id: oi.id,
         name: oi.item.name,
         qty: oi.qty,
+        fulfilledQty: oi.fulfilledQty,
         notes: oi.notes,
         totalCents: oi.totalCents,
       })),
@@ -211,8 +230,12 @@ export class OrderService {
     outletId: string,
     subOrderId: string,
     next: SubOrderStatus,
+    reason?: string,
+    code?: string,
   ) {
-    const subOrder = await this.prisma.subOrder.findUnique({ where: { id: subOrderId } });
+    const subOrder = await this.prisma.subOrder.findUnique({
+      where: { id: subOrderId },
+    });
     if (!subOrder) throw new NotFoundException("Sub-order not found");
     if (subOrder.outletId !== outletId) {
       throw new ForbiddenException("This sub-order belongs to another outlet");
@@ -224,9 +247,161 @@ export class OrderService {
     const data: Record<string, unknown> = { status: next };
     if (next === "preparing") data.prepStartAt = new Date();
     if (next === "ready") data.readyAt = new Date();
+    if (next === "rejected" && reason) data.cancelReason = reason;
+    if (next === "collected") {
+      await this.verifyPickupCode(subOrder, code, data);
+    }
     await this.prisma.subOrder.update({ where: { id: subOrderId }, data });
     await this.recomputeOrderStatus(subOrder.orderId);
-    return this.listOneSubOrder(subOrderId);
+    const updated = await this.listOneSubOrder(subOrderId);
+    try {
+      this.realtime.emitStoreOrderUpdate(subOrder.outletId, updated);
+    } catch {
+      // best-effort
+    }
+    return updated;
+  }
+
+  async adjustSubOrderItems(
+    outletId: string,
+    subOrderId: string,
+    adjustments: { orderItemId: string; fulfilledQty: number }[],
+    reason?: string,
+  ) {
+    if (adjustments.length === 0) {
+      throw new BadRequestException("No adjustments provided");
+    }
+    const subOrder = await this.prisma.subOrder.findUnique({
+      where: { id: subOrderId },
+      include: { orderItems: true, outlet: true },
+    });
+    if (!subOrder) throw new NotFoundException("Sub-order not found");
+    if (subOrder.outletId !== outletId) {
+      throw new ForbiddenException("This sub-order belongs to another outlet");
+    }
+    if (!["pending", "accepted", "preparing"].includes(subOrder.status)) {
+      throw new BadRequestException("Items can only be adjusted before the order is ready.");
+    }
+
+    const itemMap = new Map(subOrder.orderItems.map((oi) => [oi.id, oi]));
+    const overrides = new Map<string, number>();
+    for (const adj of adjustments) {
+      const oi = itemMap.get(adj.orderItemId);
+      if (!oi) throw new BadRequestException("Item is not part of this order");
+      if (
+        !Number.isInteger(adj.fulfilledQty) ||
+        adj.fulfilledQty < 0 ||
+        adj.fulfilledQty > oi.qty
+      ) {
+        throw new BadRequestException("Fulfilled quantity is out of range");
+      }
+      overrides.set(adj.orderItemId, adj.fulfilledQty);
+    }
+
+    const effectiveQty = (oi: { id: string; qty: number; fulfilledQty: number | null }) =>
+      overrides.has(oi.id) ? (overrides.get(oi.id) as number) : oi.fulfilledQty ?? oi.qty;
+
+    const oldSubtotal = subOrder.orderItems.reduce(
+      (sum, oi) => sum + oi.unitPriceCents * (oi.fulfilledQty ?? oi.qty),
+      0,
+    );
+    const newSubtotal = subOrder.orderItems.reduce(
+      (sum, oi) => sum + oi.unitPriceCents * effectiveQty(oi),
+      0,
+    );
+    const refundDelta = oldSubtotal - newSubtotal;
+    if (refundDelta <= 0) {
+      throw new BadRequestException("Adjustment does not reduce the order");
+    }
+
+    const commissionPct = subOrder.outlet.commissionPct;
+    const allVoided = newSubtotal === 0;
+    const refundNote = reason?.trim() || "Items unavailable";
+
+    await this.prisma.$transaction(async (tx) => {
+      for (const [orderItemId, fulfilledQty] of overrides.entries()) {
+        await tx.orderItem.update({
+          where: { id: orderItemId },
+          data: { fulfilledQty },
+        });
+      }
+      await tx.subOrder.update({
+        where: { id: subOrderId },
+        data: {
+          foodSubtotalCents: newSubtotal,
+          commissionCents: Math.round(newSubtotal * commissionPct),
+          ...(allVoided ? { status: "rejected", cancelReason: refundNote } : {}),
+        },
+      });
+      const order = await tx.order.findUniqueOrThrow({ where: { id: subOrder.orderId } });
+      await tx.order.update({
+        where: { id: subOrder.orderId },
+        data: {
+          refundCents: order.refundCents + refundDelta,
+          refundedAt: new Date(),
+          refundReason: refundNote,
+        },
+      });
+    });
+
+    await this.recomputeOrderStatus(subOrder.orderId);
+    const updated = await this.listOneSubOrder(subOrderId);
+    try {
+      this.realtime.emitStoreOrderUpdate(subOrder.outletId, updated);
+    } catch {
+      // best-effort
+    }
+    return updated;
+  }
+
+  private verifyPickupCode(
+    subOrder: {
+      id: string;
+      pickupCode: string | null;
+      pickupAttempts: number;
+      pickupLockedUntil: Date | null;
+    },
+    code: string | undefined,
+    data: Record<string, unknown>,
+  ) {
+    if (!subOrder.pickupCode) return;
+    const now = new Date();
+    if (subOrder.pickupLockedUntil && subOrder.pickupLockedUntil > now) {
+      const mins = Math.ceil((subOrder.pickupLockedUntil.getTime() - now.getTime()) / 60000);
+      throw new BadRequestException(`Too many incorrect codes. Try again in ${mins} min.`);
+    }
+    const entered = code?.trim();
+    if (!entered) {
+      throw new BadRequestException("Enter the customer's pickup code to confirm collection.");
+    }
+    if (entered !== subOrder.pickupCode) {
+      const attempts = subOrder.pickupAttempts + 1;
+      if (attempts >= PICKUP_MAX_ATTEMPTS) {
+        return this.prisma.subOrder
+          .update({
+            where: { id: subOrder.id },
+            data: {
+              pickupAttempts: 0,
+              pickupLockedUntil: new Date(now.getTime() + PICKUP_LOCK_MINUTES * 60000),
+            },
+          })
+          .then(() => {
+            throw new BadRequestException(
+              `Too many incorrect codes. Try again in ${PICKUP_LOCK_MINUTES} min.`,
+            );
+          });
+      }
+      const left = PICKUP_MAX_ATTEMPTS - attempts;
+      return this.prisma.subOrder
+        .update({ where: { id: subOrder.id }, data: { pickupAttempts: attempts } })
+        .then(() => {
+          throw new BadRequestException(
+            `Incorrect code. ${left} attempt${left === 1 ? "" : "s"} left.`,
+          );
+        });
+    }
+    data.pickupAttempts = 0;
+    data.pickupLockedUntil = null;
   }
 
   async listAllForAdmin() {
@@ -250,6 +425,249 @@ export class OrderService {
       riderName: o.trip?.rider.name ?? null,
       tripStatus: (o.trip?.status as TripStatus | undefined) ?? null,
       placedAt: o.placedAt,
+    }));
+  }
+
+  async adminOrderDetail(orderId: string) {
+    const full = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        complex: true,
+        address: true,
+        customer: true,
+        trip: { include: { rider: true } },
+        subOrders: {
+          include: { outlet: true, orderItems: { include: { item: true } } },
+        },
+        auditLogs: { orderBy: { createdAt: "desc" } },
+      },
+    });
+    if (!full) throw new NotFoundException(`Order ${orderId} not found`);
+    return {
+      id: full.id,
+      complexName: full.complex.name,
+      customerName: full.customer.name,
+      status: this.publicStatus(full.subOrders, full.trip),
+      paid: Boolean(full.paymentIntentId),
+      totalCents: full.totalCents,
+      foodSubtotalCents: full.foodSubtotalCents,
+      deliveryFeeCents: full.deliveryFeeCents,
+      serviceFeeCents: full.serviceFeeCents,
+      tipCents: full.tipCents,
+      placedAt: full.placedAt,
+      cancelledAt: full.cancelledAt,
+      cancelReason: full.cancelReason,
+      refundCents: full.refundCents,
+      refundedAt: full.refundedAt,
+      refundReason: full.refundReason,
+      address: {
+        label: full.address.label,
+        line1: full.address.line1,
+        suburb: full.address.suburb,
+        city: full.address.city,
+      },
+      trip: full.trip
+        ? {
+            id: full.trip.id,
+            status: full.trip.status,
+            riderId: full.trip.riderId,
+            riderName: full.trip.rider.name,
+          }
+        : null,
+      subOrders: full.subOrders.map((s) => ({
+        id: s.id,
+        outletId: s.outletId,
+        outletName: s.outlet.name,
+        status: s.status,
+        cancelReason: s.cancelReason,
+        foodSubtotalCents: s.foodSubtotalCents,
+        items: s.orderItems.map((oi) => ({
+          id: oi.id,
+          name: oi.item.name,
+          qty: oi.qty,
+          totalCents: oi.totalCents,
+        })),
+      })),
+      auditLog: full.auditLogs.map((a) => ({
+        id: a.id,
+        action: a.action,
+        reason: a.reason,
+        note: a.note,
+        actorEmail: a.actorEmail,
+        createdAt: a.createdAt,
+      })),
+    };
+  }
+
+  private async writeAudit(
+    orderId: string,
+    actor: AdminActor,
+    action: string,
+    reason?: string | null,
+    note?: string | null,
+  ) {
+    await this.prisma.orderAuditLog.create({
+      data: {
+        orderId,
+        actorId: actor.id,
+        actorEmail: actor.email ?? null,
+        action,
+        reason: reason ?? null,
+        note: note ?? null,
+      },
+    });
+  }
+
+  async adminCancelOrder(orderId: string, actor: AdminActor, reason: string) {
+    const order = await this.loadOrder(orderId);
+    const active = order.subOrders.filter(
+      (s) => s.status !== "rejected" && s.status !== "cancelled",
+    );
+    if (active.length === 0 && order.status === "cancelled") {
+      throw new BadRequestException("Order is already cancelled");
+    }
+    await this.prisma.subOrder.updateMany({
+      where: { orderId, status: { notIn: ["rejected", "cancelled"] } },
+      data: { status: "cancelled", cancelReason: reason },
+    });
+    if (order.trip && order.trip.status !== "cancelled_by_ops") {
+      await this.prisma.trip.update({
+        where: { id: order.trip.id },
+        data: { status: "cancelled_by_ops" },
+      });
+    }
+    await this.prisma.order.update({
+      where: { id: orderId },
+      data: { cancelledAt: new Date(), cancelReason: reason },
+    });
+    await this.recomputeOrderStatus(orderId);
+    await this.writeAudit(orderId, actor, "order_cancelled", reason);
+    return this.adminOrderDetail(orderId);
+  }
+
+  async adminCancelSubOrder(subOrderId: string, actor: AdminActor, reason: string) {
+    const subOrder = await this.prisma.subOrder.findUnique({ where: { id: subOrderId } });
+    if (!subOrder) throw new NotFoundException("Sub-order not found");
+    if (subOrder.status === "cancelled" || subOrder.status === "rejected") {
+      throw new BadRequestException(`Sub-order is already ${subOrder.status}`);
+    }
+    await this.prisma.subOrder.update({
+      where: { id: subOrderId },
+      data: { status: "cancelled", cancelReason: reason },
+    });
+    await this.recomputeOrderStatus(subOrder.orderId);
+    await this.writeAudit(
+      subOrder.orderId,
+      actor,
+      "suborder_cancelled",
+      reason,
+      `Outlet sub-order ${subOrderId}`,
+    );
+    return this.adminOrderDetail(subOrder.orderId);
+  }
+
+  async adminTransitionSubOrder(
+    subOrderId: string,
+    actor: AdminActor,
+    next: SubOrderStatus,
+    reason?: string,
+  ) {
+    const subOrder = await this.prisma.subOrder.findUnique({ where: { id: subOrderId } });
+    if (!subOrder) throw new NotFoundException("Sub-order not found");
+    if (subOrder.status === next) {
+      throw new BadRequestException(`Sub-order is already ${next}`);
+    }
+    const data: Record<string, unknown> = { status: next };
+    if (next === "preparing") data.prepStartAt = new Date();
+    if (next === "ready") data.readyAt = new Date();
+    if (next === "cancelled" || next === "rejected") data.cancelReason = reason ?? null;
+    await this.prisma.subOrder.update({ where: { id: subOrderId }, data });
+    await this.recomputeOrderStatus(subOrder.orderId);
+    await this.writeAudit(
+      subOrder.orderId,
+      actor,
+      "suborder_status_override",
+      reason,
+      `${subOrder.status} -> ${next}`,
+    );
+    return this.adminOrderDetail(subOrder.orderId);
+  }
+
+  async adminCancelTrip(orderId: string, actor: AdminActor, reason: string) {
+    const order = await this.loadOrder(orderId);
+    if (!order.trip) throw new BadRequestException("This order has no assigned trip");
+    if (order.trip.status === "cancelled_by_ops") {
+      throw new BadRequestException("Trip is already cancelled");
+    }
+    await this.prisma.trip.update({
+      where: { id: order.trip.id },
+      data: { status: "cancelled_by_ops" },
+    });
+    await this.recomputeOrderStatus(orderId);
+    await this.writeAudit(orderId, actor, "trip_cancelled", reason);
+    return this.adminOrderDetail(orderId);
+  }
+
+  async adminReassignRider(
+    orderId: string,
+    actor: AdminActor,
+    riderId: string,
+    reason: string,
+  ) {
+    const order = await this.loadOrder(orderId);
+    if (!order.trip) throw new BadRequestException("This order has no assigned trip");
+    const rider = await this.prisma.rider.findUnique({ where: { id: riderId } });
+    if (!rider) throw new NotFoundException("Rider not found");
+    if (order.trip.riderId === riderId) {
+      throw new BadRequestException("Trip is already assigned to this rider");
+    }
+    await this.prisma.trip.update({
+      where: { id: order.trip.id },
+      data: { riderId, status: "claimed", claimedAt: new Date() },
+    });
+    await this.recomputeOrderStatus(orderId);
+    await this.writeAudit(orderId, actor, "trip_reassigned", reason, `Rider -> ${rider.name}`);
+    return this.adminOrderDetail(orderId);
+  }
+
+  async adminRefund(
+    orderId: string,
+    actor: AdminActor,
+    amountCents: number,
+    reason: string,
+  ) {
+    const order = await this.loadOrder(orderId);
+    if (!order.paymentIntentId) {
+      throw new BadRequestException("Order has no payment to refund");
+    }
+    if (amountCents > order.totalCents) {
+      throw new BadRequestException("Refund cannot exceed the order total");
+    }
+    await this.prisma.order.update({
+      where: { id: orderId },
+      data: { refundCents: amountCents, refundedAt: new Date(), refundReason: reason },
+    });
+    await this.writeAudit(orderId, actor, "refund_recorded", reason, `${amountCents} cents`);
+    return this.adminOrderDetail(orderId);
+  }
+
+  async adminAddNote(orderId: string, actor: AdminActor, note: string) {
+    await this.loadOrder(orderId);
+    await this.writeAudit(orderId, actor, "note_added", null, note);
+    return this.adminOrderDetail(orderId);
+  }
+
+  async listRidersForAdmin() {
+    const riders = await this.prisma.rider.findMany({
+      orderBy: { name: "asc" },
+      include: { homeComplex: true },
+    });
+    return riders.map((r) => ({
+      id: r.id,
+      name: r.name,
+      phone: r.phone,
+      status: r.status,
+      complexName: r.homeComplex.name,
     }));
   }
 
@@ -455,6 +873,11 @@ export class OrderService {
     }
     const paymentIntentId = `pi_sim_${randomInt(1e9, 9e9).toString(36)}`;
     await this.prisma.order.update({ where: { id: orderId }, data: { paymentIntentId } });
+    try {
+      this.realtime.emitRiderTripAvailable({ orderId, complexId: order.complexId });
+    } catch {
+      // best-effort; never block on realtime errors
+    }
     return { orderId, paymentIntentId, status: "paid" };
   }
 
@@ -463,6 +886,11 @@ export class OrderService {
     const status = this.publicStatus(order.subOrders, order.trip);
     if (order.status !== status) {
       await this.prisma.order.update({ where: { id: orderId }, data: { status } });
+    }
+    try {
+      this.realtime.emitCustomerOrderUpdate(order.customerId, { orderId, status });
+    } catch {
+      // best-effort; never block on realtime errors
     }
     return status;
   }
@@ -538,6 +966,7 @@ export class OrderService {
           id: oi.id,
           name: oi.item.name,
           qty: oi.qty,
+          fulfilledQty: oi.fulfilledQty,
           notes: oi.notes,
           unitPriceCents: oi.unitPriceCents,
           totalCents: oi.totalCents,
@@ -555,12 +984,12 @@ export class OrderService {
       id: s.id,
       orderId: s.orderId,
       status: s.status,
-      pickupCode: s.pickupCode,
       foodSubtotalCents: s.foodSubtotalCents,
       items: s.orderItems.map((oi) => ({
         id: oi.id,
         name: oi.item.name,
         qty: oi.qty,
+        fulfilledQty: oi.fulfilledQty,
         totalCents: oi.totalCents,
       })),
     };

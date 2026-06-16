@@ -3,39 +3,37 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import {
-  ArrowLeft,
-  BarChart3,
-  Bike,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  ClipboardList,
-  Clock,
-  Home,
-  LayoutGrid,
-  MapPin,
-  Menu,
-  ReceiptText,
-  Search,
-  Settings,
-  ShoppingBag,
-  ShoppingCart,
-  Store,
-  Users,
-  X,
-} from "lucide-react";
+import { IoFastFoodOutline } from "react-icons/io5";
+import { LuArrowLeft as ArrowLeft, LuBike as Bike, LuChevronDown as ChevronDown, LuChevronLeft as ChevronLeft, LuChevronRight as ChevronRight, LuClock as Clock, LuLayoutGrid as Grid, LuHouse as Home, LuMapPin as MapPin, LuMenu as Menu, LuUser as Person, LuReceiptText as ReceiptText, LuSearch as Search, LuShoppingBag as ShoppingBag, LuShoppingCart as ShoppingCart, LuWallet as Wallet, LuX as X } from "react-icons/lu";
+import { MdOutlineStorefront as Store } from "react-icons/md";
 import { useCart } from "@/lib/cart-store";
 import { useAuth, homePathForRole, type PrincipalRole } from "@/lib/auth-store";
+import { useRiderStore } from "@/lib/rider-store";
+import { api, ApiError } from "@/lib/api";
+import { AvailabilityMenu } from "@/components/availability-menu";
+import { ADMIN_NAV_SECTIONS, isAdminSectionActive } from "@/app/admin/_lib/nav-sections";
 import { HUBS } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
 const navMenuLinks = [
   { href: "/", label: "Home", Icon: Home },
-  { href: "/menu", label: "Browse restaurants", Icon: ShoppingBag },
+  { href: "/menu", label: "Browse", Icon: ShoppingBag },
   { href: "/orders", label: "Orders", Icon: ReceiptText },
   { href: "/cart", label: "Cart", Icon: ShoppingCart },
 ];
+
+const riderNavLinks = [
+  { href: "/rider", label: "Overview", Icon: Grid },
+  { href: "/rider/orders", label: "Orders", Icon: ReceiptText },
+  { href: "/rider/earnings", label: "Earnings", Icon: Wallet },
+  { href: "/rider/profile", label: "Profile", Icon: Person },
+];
+
+function isRiderSectionActive(pathname: string, href: string) {
+  return href === "/rider"
+    ? pathname === "/rider"
+    : pathname === href || pathname.startsWith(`${href}/`);
+}
 
 const mobileBottomLinks = [
   {
@@ -113,6 +111,8 @@ export function SiteHeader() {
   const lines = useCart((s) => s.lines);
   const hubId = useCart((s) => s.hub);
   const setHub = useCart((s) => s.setHub);
+  const address = useCart((s) => s.address);
+  const cartHydrated = useCart((s) => s.hydrated);
   const itemCount = lines.reduce((sum, line) => sum + line.quantity, 0);
   const hub = HUBS.find((h) => h.id === hubId);
   const activeHub = hub ?? HUBS[0];
@@ -132,15 +132,19 @@ export function SiteHeader() {
     pathname.startsWith("/orders");
   const isHome = pathname === "/";
   const isAuthFlow =
-    pathname === "/login" ||
-    pathname === "/signup" ||
+    pathname === "/sign-in" ||
+    pathname === "/sign-up" ||
     pathname === "/forgot-password" ||
     pathname === "/reset-password" ||
     pathname === "/verify-email";
-  const portalRoots = ["/rider", "/admin", "/partner"];
+  const portalRoots = ["/rider", "/admin"];
   const isPortal =
     !isAuthFlow &&
     portalRoots.some((root) => pathname === root || pathname.startsWith(`${root}/`));
+  const isReplicaRoute = [
+    "/store",
+    "/rider-demo",
+  ].some((r) => pathname === r || pathname.startsWith(`${r}/`));
   const usesCompactNav = isHome || isOrderingFlow || isAuthFlow;
 
   const [navMenuOpen, setNavMenuOpen] = React.useState(false);
@@ -263,6 +267,12 @@ export function SiteHeader() {
 
   const activeLocation =
     deliveryLocations.find((location) => location.hubId === activeHub.id) ?? deliveryLocations[0];
+  const isCustomAddress =
+    Boolean(address) && !deliveryLocations.some((location) => location.address === address);
+  const deliveryName = isCustomAddress
+    ? (address as string).split(",")[0].trim()
+    : activeLocation.name;
+  const deliverySubtitle = isCustomAddress ? (address as string) : activeLocation.address;
   const scheduledDay = scheduleDays.find((day) => day.id === scheduledDayId) ?? scheduleDays[0];
   const deliveryTimeLabel = deliveryTiming === "now" ? "Now" : `${scheduledDay.label}, ${scheduledTime}`;
   const showMobileBottomNav =
@@ -311,9 +321,9 @@ export function SiteHeader() {
   };
 
   const roleLabels: Record<PrincipalRole, string> = {
-    customer: "Order food",
-    rider: "Rider portal",
-    partner: "Partner portal",
+    customer: "Customer",
+    rider: "Rider",
+    partner: "Store",
     admin: "Admin",
   };
 
@@ -323,24 +333,18 @@ export function SiteHeader() {
     router.push(homePathForRole(role));
   };
 
+  if (isReplicaRoute) {
+    return null;
+  }
+
   if (isPortal) {
-    const portalLabel = activeRole ? roleLabels[activeRole] : "Gawula";
-    const otherModes = (principal?.roles ?? []).filter((role) => role !== activeRole);
-    const adminSections = [
-      { href: "/admin", label: "Overview", Icon: LayoutGrid },
-      { href: "/admin/orders", label: "Orders", Icon: ReceiptText },
-      { href: "/admin/applications", label: "Applications", Icon: ClipboardList },
-      { href: "/admin/riders", label: "Riders", Icon: Bike },
-      { href: "/admin/stores", label: "Stores", Icon: Store },
-      { href: "/admin/customers", label: "Customers", Icon: Users },
-      { href: "/admin/analytics", label: "Analytics", Icon: BarChart3 },
-      { href: "/admin/payouts", label: "Payouts", Icon: ReceiptText },
-      { href: "/admin/settings", label: "Settings", Icon: Settings },
-    ];
     const isAdminPortal =
       activeRole === "admin" && (pathname === "/admin" || pathname.startsWith("/admin/"));
-    const sectionActive = (href: string) =>
-      href === "/admin" ? pathname === "/admin" : pathname === href || pathname.startsWith(`${href}/`);
+    const isRiderPortal =
+      pathname.startsWith("/rider") && Boolean(principal?.roles?.includes("rider"));
+    const otherModes = (principal?.roles ?? []).filter(
+      (role) => role !== activeRole && !(isRiderPortal && role === "customer"),
+    );
     return (
       <>
         <header className="fixed inset-x-0 top-0 z-40 bg-background text-foreground">
@@ -351,17 +355,15 @@ export function SiteHeader() {
                 aria-label="Menu"
                 aria-controls="site-nav-menu"
                 aria-expanded={navMenuOpen}
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
+                className="grid shrink-0 place-items-center"
                 onClick={openNavMenu}
               >
                 <Menu className="h-5 w-5" />
               </button>
               <Link href="/" className="flex min-w-0 items-center gap-2">
                 <span className="text-xl font-semibold tracking-tight text-primary">Gawula</span>
-                <span className="hidden text-sm font-medium text-muted-foreground sm:inline">
-                  {portalLabel}
-                </span>
               </Link>
+              {isRiderPortal ? <RiderAvailabilityPill /> : null}
             </div>
           </div>
         </header>
@@ -406,8 +408,8 @@ export function SiteHeader() {
                   <ArrowLeft className="h-5 w-5" />
                 </button>
               </div>
-              {isAuthed ? (
-                <div className="mt-7 grid gap-3">
+              <div className="mt-7 grid gap-3">
+                {isAuthed ? (
                   <button
                     type="button"
                     onClick={() => {
@@ -419,12 +421,12 @@ export function SiteHeader() {
                   >
                     Sign out
                   </button>
-                </div>
-              ) : null}
+                ) : null}
+              </div>
               {isAdminPortal ? (
                 <nav className="mt-8 grid gap-1 text-base font-semibold">
-                  {adminSections.map(({ href, label, Icon }) => {
-                    const active = sectionActive(href);
+                  {ADMIN_NAV_SECTIONS.map(({ href, label, Icon }) => {
+                    const active = isAdminSectionActive(pathname, href);
                     return (
                       <Link
                         key={href}
@@ -436,35 +438,69 @@ export function SiteHeader() {
                         )}
                         onClick={closeNavMenu}
                       >
-                        <Icon className="h-5 w-5" strokeWidth={2.25} />
+                        <Icon className="h-5 w-5" />
                         <span>{label}</span>
                       </Link>
                     );
                   })}
                 </nav>
               ) : null}
-              {otherModes.length > 0 ? (
-                <div className="mt-5 border-t border-border pt-5">
-                  <p className="px-1 text-sm text-muted-foreground">Switch mode</p>
-                  <nav className="mt-2 grid gap-1 text-base font-semibold">
-                    {otherModes.map((role) => (
-                      <button
-                        key={role}
-                        type="button"
-                        onClick={() => switchToMode(role)}
-                        className="flex h-12 items-center gap-4 rounded-md px-1 text-left"
-                      >
-                        {role === "rider" ? (
-                          <Bike className="h-5 w-5" strokeWidth={2.25} />
-                        ) : role === "customer" ? (
-                          <ShoppingBag className="h-5 w-5" strokeWidth={2.25} />
-                        ) : (
-                          <Store className="h-5 w-5" strokeWidth={2.25} />
+              {isRiderPortal ? (
+                <nav className="mt-8 grid gap-1 text-base font-semibold">
+                  {riderNavLinks.map(({ href, label, Icon }) => {
+                    const active = isRiderSectionActive(pathname, href);
+                    return (
+                      <Link
+                        key={href}
+                        href={href}
+                        aria-current={active ? "page" : undefined}
+                        className={cn(
+                          "flex h-12 items-center gap-4 rounded-md px-1",
+                          active ? "text-primary" : undefined,
                         )}
-                        <span>{roleLabels[role]}</span>
-                      </button>
-                    ))}
-                  </nav>
+                        onClick={closeNavMenu}
+                      >
+                        <Icon className="h-5 w-5" />
+                        <span>{label}</span>
+                      </Link>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => switchToMode("customer")}
+                    className="flex h-12 items-center gap-4 rounded-md px-1 text-left"
+                  >
+                  <IoFastFoodOutline className="h-5 w-5" />
+                    <span>Customer</span>
+                  </button>
+                </nav>
+              ) : null}
+              {otherModes.length > 0 ? (
+                <nav className="mt-1 grid gap-1 text-base font-semibold">
+                  {otherModes.map((role) => (
+                    <button
+                      key={role}
+                      type="button"
+                      onClick={() => switchToMode(role)}
+                      className="flex h-12 items-center gap-4 rounded-md px-1 text-left"
+                    >
+                      {role === "rider" ? (
+                        <Bike className="h-5 w-5" />
+                      ) : role === "customer" ? (
+                        <IoFastFoodOutline className="h-5 w-5" />
+                      ) : (
+                        <Store className="h-5 w-5" />
+                      )}
+                      <span>{roleLabels[role]}</span>
+                    </button>
+                  ))}
+                </nav>
+              ) : null}
+              {isAuthed && principal ? (
+                <div className="mt-auto">
+                  {principal.roles?.includes("rider") && pathname.startsWith("/rider") ? (
+                    <RiderAvailabilityRow />
+                  ) : null}
                 </div>
               ) : null}
             </aside>
@@ -508,7 +544,7 @@ export function SiteHeader() {
               aria-controls="site-nav-menu"
               aria-expanded={navMenuOpen}
               className={cn(
-                "h-9 w-9 shrink-0 place-items-center rounded-full",
+                "-ml-0.5 shrink-0 place-items-center",
                 isOrderingFlow ? "hidden md:grid" : "hidden",
               )}
               onClick={openNavMenu}
@@ -526,7 +562,7 @@ export function SiteHeader() {
             </Link>
             {isOrderingFlow ? (
               <>
-                <div className="hidden h-9 shrink-0 items-center rounded-full bg-secondary p-0.5 text-sm font-semibold md:flex">
+                <div className="hidden h-9 shrink-0 items-center rounded-full bg-secondary p-0.5 text-sm font-semibold lg:flex">
                   <button
                     type="button"
                     aria-pressed={fulfillment === "delivery"}
@@ -560,7 +596,11 @@ export function SiteHeader() {
                     >
                       <MapPin className="h-4 w-4 shrink-0" />
                       <span className="max-w-[170px] truncate">
-                        {fulfillment === "delivery" ? activeLocation.name : activeHub.name}
+                        {cartHydrated
+                          ? fulfillment === "delivery"
+                            ? deliveryName
+                            : activeHub.name
+                          : null}
                       </span>
                       <span className="text-muted-foreground">•</span>
                       <span>{deliveryTimeLabel}</span>
@@ -574,7 +614,7 @@ export function SiteHeader() {
                           <button
                             type="button"
                             aria-label="Cancel delivery details"
-                            className="inline-grid h-9 w-9 place-items-center justify-self-end rounded-full hover:bg-secondary"
+                            className="inline-grid h-9 w-9 place-items-center justify-self-end rounded-full text-muted-foreground transition-colors hover:text-foreground"
                             onClick={() => {
                               setLocationChoicesOpen(false);
                               setDeliveryMenuOpen(false);
@@ -586,9 +626,9 @@ export function SiteHeader() {
                         <div className="mt-5 flex items-start gap-3">
                           <MapPin className="mt-1 h-5 w-5 shrink-0" />
                           <div className="min-w-0 flex-1">
-                            <div className="font-semibold">{activeLocation.name}</div>
+                            <div className="font-semibold">{deliveryName}</div>
                             <div className="mt-0.5 text-sm leading-snug text-muted-foreground">
-                              {activeLocation.address}
+                              {deliverySubtitle}
                             </div>
                           </div>
                           <button
@@ -677,7 +717,7 @@ export function SiteHeader() {
                   </button>
                 )}
                 <form
-                  className="hidden h-9 min-w-[360px] max-w-[720px] flex-1 items-center gap-3 rounded-full bg-[#eeeeee] px-4 lg:flex"
+                  className="hidden h-9 min-w-[360px] max-w-[720px] flex-1 items-center gap-3 rounded-full bg-[#eeeeee] px-4 md:flex"
                   onSubmit={submitHeaderSearch}
                 >
                   <Search className="h-4 w-4 text-black" />
@@ -699,24 +739,24 @@ export function SiteHeader() {
           {!usesCompactNav ? (
             <nav className="flex items-center gap-4 text-sm font-medium sm:gap-5">
               <Link
-                href="/riders"
-                aria-current={pathname.startsWith("/riders") ? "page" : undefined}
+                href="/waitlist"
+                aria-current={pathname.startsWith("/waitlist") ? "page" : undefined}
                 className={cn(
                   "whitespace-nowrap",
-                  pathname.startsWith("/riders") && "text-primary",
+                  pathname.startsWith("/waitlist") && "text-primary",
                 )}
               >
-                Become a rider
+                Join the waitlist
               </Link>
               <Link
-                href="/partners"
-                aria-current={pathname.startsWith("/partners") ? "page" : undefined}
+                href="/launch-partner"
+                aria-current={pathname.startsWith("/launch-partner") ? "page" : undefined}
                 className={cn(
                   "whitespace-nowrap",
-                  pathname.startsWith("/partners") && "text-primary",
+                  pathname.startsWith("/launch-partner") && "text-primary",
                 )}
               >
-                List your restaurant
+                Become a Launch Partner
               </Link>
             </nav>
           ) : null}
@@ -728,32 +768,21 @@ export function SiteHeader() {
                 aria-label={`View cart with ${itemCount} ${itemCount === 1 ? "item" : "items"}`}
                 className="relative hidden h-10 w-10 place-items-center border-0 bg-transparent font-semibold md:grid"
               >
-                <ShoppingCart className="h-5 w-5" strokeWidth={2.75} />
+                <ShoppingCart className="h-5 w-5" />
                 <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-foreground px-1.5 text-[11px] leading-none text-background">
                   {itemCount}
                 </span>
               </Link>
-              {isAuthed ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    logout();
-                    router.push("/");
-                  }}
-                  className="hidden h-10 items-center px-2 text-sm font-semibold text-muted-foreground hover:text-foreground sm:inline-flex"
-                >
-                  Sign out
-                </button>
-              ) : (
+              {isAuthed ? null : (
                 <>
                   <Link
-                    href="/login"
+                    href="/sign-in"
                     className="hidden h-10 items-center px-2 text-sm font-semibold sm:inline-flex"
                   >
                     Sign in
                   </Link>
                   <Link
-                    href="/signup"
+                    href="/sign-up"
                     className="hidden h-10 items-center rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground sm:inline-flex"
                   >
                     Sign up
@@ -773,13 +802,13 @@ export function SiteHeader() {
               ) : (
                 <>
                   <Link
-                    href="/login"
+                    href="/sign-in"
                     className="inline-flex h-10 items-center rounded-full bg-white px-4 text-sm font-semibold text-black shadow-sm hover:bg-white/90 sm:px-5"
                   >
                     Sign in
                   </Link>
                   <Link
-                    href="/signup"
+                    href="/sign-up"
                     className="inline-flex h-10 items-center rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 sm:px-5"
                   >
                     Sign up
@@ -808,7 +837,7 @@ export function SiteHeader() {
               <button
                 type="button"
                 aria-label="Close schedule modal"
-                className="inline-grid h-9 w-9 place-items-center justify-self-end rounded-full hover:bg-secondary"
+                className="inline-grid h-9 w-9 place-items-center justify-self-end rounded-full text-muted-foreground transition-colors hover:text-foreground"
                 onClick={() => setScheduleModalOpen(false)}
               >
                 <X className="h-5 w-5" />
@@ -947,14 +976,14 @@ export function SiteHeader() {
               ) : (
                 <>
                   <Link
-                    href="/signup"
+                    href="/sign-up"
                     className="flex h-12 items-center justify-center rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground"
                     onClick={closeNavMenu}
                   >
                     Sign up
                   </Link>
                   <Link
-                    href="/login"
+                    href="/sign-in"
                     className="flex h-12 items-center justify-center rounded-full bg-secondary px-5 text-sm font-semibold"
                     onClick={closeNavMenu}
                   >
@@ -964,42 +993,45 @@ export function SiteHeader() {
               )}
             </div>
             <nav className="mt-8 grid gap-1 text-base font-semibold">
-              {navMenuLinks.map(({ href, label, Icon }) => (
-                <Link
-                  key={href}
-                  href={href}
-                  className="flex h-12 items-center gap-4 rounded-md px-1"
-                  onClick={closeNavMenu}
+              {navMenuLinks.map(({ href, label, Icon }) => {
+                const active = pathname === href || pathname.startsWith(`${href}/`);
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    aria-current={active ? "page" : undefined}
+                    className={cn(
+                      "flex h-12 items-center gap-4 rounded-md px-1",
+                      active ? "text-primary" : undefined,
+                    )}
+                    onClick={closeNavMenu}
+                  >
+                    <Icon className="h-5 w-5" />
+                    <span>{label}</span>
+                  </Link>
+                );
+              })}
+              {isAuthed && principal?.roles?.includes("rider") && (
+                <button
+                  type="button"
+                  className="flex h-12 items-center gap-4 rounded-md px-1 text-left font-semibold"
+                  onClick={() => switchToMode("rider")}
                 >
-                  <Icon className="h-5 w-5" strokeWidth={2.25} />
-                  <span>{label}</span>
-                </Link>
-              ))}
+                  <Bike className="h-5 w-5" />
+                  <span>Rider</span>
+                </button>
+              )}
+              {isAuthed && principal?.roles?.includes("partner") && (
+                <button
+                  type="button"
+                  className="flex h-12 items-center gap-4 rounded-md px-1 text-left font-semibold"
+                  onClick={() => switchToMode("partner")}
+                >
+                  <Store className="h-5 w-5" />
+                  <span>Store</span>
+                </button>
+              )}
             </nav>
-            <nav className="mt-1 grid gap-1 text-base font-semibold">
-              <Link
-                href="/riders"
-                className="flex h-12 items-center gap-4 rounded-md px-1"
-                onClick={closeNavMenu}
-              >
-                <Bike className="h-5 w-5" strokeWidth={2.25} />
-                <span>Become a rider</span>
-              </Link>
-              <Link
-                href="/partners"
-                className="flex h-12 items-center gap-4 rounded-md px-1"
-                onClick={closeNavMenu}
-              >
-                <Store className="h-5 w-5" strokeWidth={2.25} />
-                <span>List your store</span>
-              </Link>
-            </nav>
-            <div className="mt-auto border-t pt-5 text-sm font-medium text-muted-foreground">
-              <p>{activeLocation.name}</p>
-              <p className="mt-1 text-foreground">
-                {deliveryTiming === "now" ? "Delivery now" : `Scheduled for ${scheduledTime}`}
-              </p>
-            </div>
           </aside>
         </div>
       ) : null}
@@ -1022,7 +1054,7 @@ export function SiteHeader() {
                   )}
                 >
                   <span className="relative">
-                    <Icon className="h-5 w-5" strokeWidth={active ? 2.75 : 2.25} />
+                    <Icon className="h-5 w-5" />
                     {label === "Cart" && itemCount > 0 ? (
                       <span className="absolute -right-2.5 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-foreground px-1 text-[10px] leading-none text-background">
                         {itemCount}
@@ -1044,7 +1076,7 @@ export function SiteHeader() {
               )}
               onClick={openNavMenu}
             >
-              <Menu className="h-5 w-5" strokeWidth={navMenuOpen ? 2.75 : 2.25} />
+              <Menu className="h-5 w-5" />
               <span className="truncate">Menu</span>
             </button>
           </div>
@@ -1052,5 +1084,112 @@ export function SiteHeader() {
       ) : null}
       {isHome ? null : <div aria-hidden className={usesCompactNav ? "h-16" : "h-20"} />}
     </>
+  );
+}
+
+function RiderAvailabilityPill() {
+  const token = useAuth((s) => s.token);
+  const status = useRiderStore((s) => s.status);
+  const refresh = useRiderStore((s) => s.refresh);
+  const setStatus = useRiderStore((s) => s.setStatus);
+  const [pending, setPending] = React.useState(false);
+
+  const apply = async (next: "online" | "offline") => {
+    if (pending || status === null || next === status) return;
+    const online = next === "online";
+    const prev = status;
+    setPending(true);
+    setStatus(online ? "online" : "offline");
+    try {
+      await api("/dispatch/availability", { method: "POST", token, body: { online } });
+      await refresh?.();
+    } catch {
+      setStatus(prev);
+    } finally {
+      setPending(false);
+    }
+  };
+
+  return (
+    <AvailabilityMenu
+      value={status ?? "offline"}
+      options={[
+        { label: "Online", value: "online" },
+        { label: "Offline", value: "offline" },
+      ]}
+      triggerLabel={status === "online" ? "Online" : "Offline"}
+      disabled={pending || status === null}
+      onApply={apply}
+    />
+  );
+}
+
+function RiderAvailabilityRow() {
+  const token = useAuth((s) => s.token);
+  const status = useRiderStore((s) => s.status);
+  const onTrip = useRiderStore((s) => s.onTrip);
+  const refresh = useRiderStore((s) => s.refresh);
+  const setStatus = useRiderStore((s) => s.setStatus);
+  const [pending, setPending] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const online = status === "online";
+  const disabled = pending || status === null;
+
+  const toggle = async () => {
+    if (disabled) return;
+    setPending(true);
+    setError(null);
+    const next = !online;
+    setStatus(next ? "online" : "offline");
+    try {
+      await api("/dispatch/availability", { method: "POST", token, body: { online: next } });
+      await refresh?.();
+    } catch (err) {
+      setStatus(online ? "online" : "offline");
+      setError(err instanceof ApiError ? err.message : "Could not update availability");
+    } finally {
+      setPending(false);
+    }
+  };
+
+  return (
+    <div className="p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold">
+            {status === null ? "Availability" : online ? "Online" : "Offline"}
+          </p>
+          {onTrip ? (
+            <p className="mt-0.5 text-xs text-muted-foreground">On a trip</p>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={online}
+          aria-label={online ? "Go offline" : "Go online"}
+          onClick={toggle}
+          disabled={disabled}
+          className={cn(
+            "relative inline-flex h-7 w-12 shrink-0 items-center rounded-full ring-1 ring-black/10 transition-colors",
+            online ? "bg-primary" : "bg-neutral-300",
+            disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer",
+          )}
+        >
+          <span
+            className={cn(
+              "inline-block h-5 w-5 rounded-full bg-white shadow transition-transform",
+              online ? "translate-x-6" : "translate-x-1",
+            )}
+          />
+        </button>
+      </div>
+      {error ? (
+        <p role="alert" aria-live="polite" className="mt-2 text-xs text-destructive">
+          {error}
+        </p>
+      ) : null}
+    </div>
   );
 }

@@ -4,7 +4,6 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { LoadingDots } from "@/components/ui/loading-dots";
 import { useAuth } from "@/lib/auth-store";
@@ -59,7 +58,7 @@ export function ResetPasswordPage() {
               variant="dark"
               size="lg"
               className="mt-6 w-full"
-              onClick={() => router.push("/login")}
+              onClick={() => router.push("/sign-in")}
             >
               Go to sign in
             </Button>
@@ -88,7 +87,7 @@ export function ResetPasswordPage() {
                 id="new-password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                placeholder="New password (at least 8 characters)"
+                placeholder="New password"
                 autoComplete="new-password"
                 autoFocus
               />

@@ -1,4 +1,10 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import Redis from "ioredis";
 import { randomUUID } from "node:crypto";
 import { REDIS } from "../../infrastructure/redis.module";
@@ -33,13 +39,13 @@ export class CartService {
     private readonly prisma: PrismaService,
   ) {}
 
-  async create(dto: CreateCartDto): Promise<StoredCart> {
+  async create(customerId: string, dto: CreateCartDto): Promise<StoredCart> {
     const complex = await this.prisma.complex.findUnique({ where: { id: dto.complexId } });
     if (!complex) throw new NotFoundException(`Complex ${dto.complexId} not found`);
     const now = new Date();
     const cart: StoredCart = {
       id: randomUUID(),
-      customerId: dto.customerId,
+      customerId,
       complexId: dto.complexId,
       lines: [],
       createdAt: now.toISOString(),
@@ -55,8 +61,16 @@ export class CartService {
     return JSON.parse(raw) as StoredCart;
   }
 
-  async addItem(cartId: string, dto: AddCartItemDto): Promise<StoredCart> {
+  async getOwned(cartId: string, customerId: string): Promise<StoredCart> {
     const cart = await this.get(cartId);
+    if (cart.customerId !== customerId) {
+      throw new ForbiddenException("This cart belongs to another customer");
+    }
+    return cart;
+  }
+
+  async addItem(cartId: string, customerId: string, dto: AddCartItemDto): Promise<StoredCart> {
+    const cart = await this.getOwned(cartId, customerId);
     const outlet = await this.prisma.outlet.findUnique({ where: { id: dto.outletId } });
     if (!outlet) throw new NotFoundException(`Outlet ${dto.outletId} not found`);
     if (outlet.complexId !== cart.complexId) {
@@ -90,8 +104,13 @@ export class CartService {
     return cart;
   }
 
-  async updateItem(cartId: string, lineId: string, dto: UpdateCartItemDto): Promise<StoredCart> {
-    const cart = await this.get(cartId);
+  async updateItem(
+    cartId: string,
+    customerId: string,
+    lineId: string,
+    dto: UpdateCartItemDto,
+  ): Promise<StoredCart> {
+    const cart = await this.getOwned(cartId, customerId);
     const line = cart.lines.find((l) => l.id === lineId);
     if (!line) throw new NotFoundException(`Line ${lineId} not in cart`);
     if (dto.qty === 0) {
@@ -103,8 +122,8 @@ export class CartService {
     return cart;
   }
 
-  async removeItem(cartId: string, lineId: string): Promise<StoredCart> {
-    const cart = await this.get(cartId);
+  async removeItem(cartId: string, customerId: string, lineId: string): Promise<StoredCart> {
+    const cart = await this.getOwned(cartId, customerId);
     cart.lines = cart.lines.filter((l) => l.id !== lineId);
     await this.save(cart);
     return cart;

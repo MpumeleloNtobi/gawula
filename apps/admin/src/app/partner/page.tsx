@@ -12,7 +12,6 @@ type PartnerSubOrder = {
   id: string;
   orderId: string;
   status: string;
-  pickupCode: string;
   foodSubtotalCents: number;
   placedAt: string;
   customerName: string;
@@ -38,7 +37,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 export default function PartnerPage() {
   return (
-    <RoleGate role="partner" title="Store partner sign in">
+    <RoleGate role="partner" title="Store sign in">
       <PartnerBoard />
     </RoleGate>
   );
@@ -97,7 +96,6 @@ function PartnerBoard() {
                   <span className="rounded-full bg-secondary px-3 py-1 text-xs font-medium">
                     {STATUS_LABEL[sub.status] ?? sub.status}
                   </span>
-                  <span className="text-xs text-muted-foreground">Code {sub.pickupCode}</span>
                 </div>
                 <p className="mt-3 font-semibold">{sub.customerName}</p>
                 <p className="text-xs text-muted-foreground">{sub.addressLine}</p>

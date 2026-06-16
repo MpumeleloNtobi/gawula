@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Check } from "lucide-react";
+import { LuCheck as Check } from "react-icons/lu";
 import { Button } from "@/components/ui/button";
 import { api, ApiError } from "@/lib/api";
 import {

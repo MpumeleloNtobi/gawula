@@ -4,7 +4,7 @@ import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams, notFound } from "next/navigation";
-import { Clock, Heart, MapPin, Plus, Search, Star, Tag } from "lucide-react";
+import { LuClock as Clock, LuHeart as Heart, LuHeart as HeartFilled, LuMapPin as MapPin, LuMinus as Minus, LuPlus as Plus, LuSearch as Search, LuStar as Star, LuTag as Tag } from "react-icons/lu";
 import { FloatingContactButton } from "@/components/floating-contact-button";
 import { Input } from "@/components/ui/input";
 import { canAddBrandToCart, useCart, type AddLineResult } from "@/lib/cart-store";
@@ -216,9 +216,9 @@ export default function BrandMenuPage() {
 
   const lines = useCart((s) => s.lines);
   const addLine = useCart((s) => s.addLine);
+  const updateQuantity = useCart((s) => s.updateQuantity);
   const [query, setQuery] = React.useState("");
   const [liked, setLiked] = React.useState(false);
-  const [addedItemId, setAddedItemId] = React.useState<string | null>(null);
   const [cartNotice, setCartNotice] = React.useState<string | null>(null);
 
   const displayName = brandDisplayName(brand.name);
@@ -236,11 +236,7 @@ export default function BrandMenuPage() {
     () => canAddBrandToCart(lines, brand.id),
     [brand.id, lines],
   );
-  const compatibilityNotice = !compatibility.ok
-    ? compatibility.reason
-    : lines.length > 0 && compatibility.effortFee
-      ? `${compatibility.label}: ${compatibility.reason} Delivery effort adds ${formatPrice(compatibility.effortFee)}.`
-      : null;
+
   const items = React.useMemo(
     () => MENU_ITEMS.filter((item) => item.brandId === brand.id),
     [brand.id],
@@ -263,8 +259,11 @@ export default function BrandMenuPage() {
       return;
     }
     setCartNotice(null);
-    setAddedItemId(item.id);
-    window.setTimeout(() => setAddedItemId((current) => (current === item.id ? null : current)), 1400);
+  };
+
+  const decrementItem = (item: MenuItem) => {
+    const line = lines.find((l) => l.itemId === item.id);
+    if (line) updateQuantity(line.lineId, line.quantity - 1);
   };
 
   return (
@@ -303,7 +302,7 @@ export default function BrandMenuPage() {
               </p>
               <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium text-muted-foreground">
                 <span className="inline-flex items-center gap-1.5 font-semibold text-foreground">
-                  <Star className="h-4 w-4 fill-foreground" />
+                  <Star className="h-4 w-4" />
                   {details.rating.toFixed(1)}
                   <span className="font-medium text-muted-foreground">
                     ({formatRatingCount(details.ratingCount)})
@@ -317,18 +316,18 @@ export default function BrandMenuPage() {
                 ))}
               </div>
               <p className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
-                <MapPin className="h-4 w-4 shrink-0" strokeWidth={2.25} />
+                <MapPin className="h-4 w-4 shrink-0" />
                 {location
                   ? `${location.name}, ${location.area} (${location.proximityLabel})`
                   : details.area}
               </p>
               <div className="mt-5 flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-[#116B35]/10 px-3 py-1 text-[13px] font-semibold text-[#116B35]">
-                  <Clock className="h-3.5 w-3.5" strokeWidth={2.25} />
+                  <Clock className="h-3.5 w-3.5" />
                   {details.opening}
                 </span>
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-[#e11900]/10 px-3 py-1 text-[13px] font-semibold text-[#e11900]">
-                  <Tag className="h-3.5 w-3.5" strokeWidth={2.25} />
+                  <Tag className="h-3.5 w-3.5" />
                   {details.offer}
                 </span>
               </div>
@@ -343,7 +342,7 @@ export default function BrandMenuPage() {
               )}
               onClick={() => setLiked((current) => !current)}
             >
-              <Heart className={cn("h-5 w-5", liked && "fill-current")} strokeWidth={2.25} />
+              {liked ? <HeartFilled className="h-5 w-5" /> : <Heart className="h-5 w-5" />}
             </button>
           </div>
         </div>
@@ -393,10 +392,10 @@ export default function BrandMenuPage() {
         </section>
       ) : null}
 
-      {compatibilityNotice || cartNotice ? (
+      {cartNotice ? (
         <section className="container pb-3">
           <div className="rounded-lg bg-secondary px-4 py-3 text-sm font-semibold text-foreground">
-            {cartNotice ?? compatibilityNotice}
+            {cartNotice}
           </div>
         </section>
       ) : null}
@@ -457,9 +456,10 @@ export default function BrandMenuPage() {
                     <MenuItemTile
                       key={item.id}
                       item={item}
-                      added={addedItemId === item.id}
+                      qty={lines.filter((l) => l.itemId === item.id).reduce((sum, l) => sum + l.quantity, 0)}
                       compatibility={compatibility}
                       onQuickAdd={quickAddItem}
+                      onDecrement={decrementItem}
                     />
                   ))}
                 </div>
@@ -476,14 +476,16 @@ export default function BrandMenuPage() {
 
 function MenuItemTile({
   item,
-  added,
+  qty,
   compatibility,
   onQuickAdd,
+  onDecrement,
 }: {
   item: MenuItem;
-  added: boolean;
+  qty: number;
   compatibility: AddLineResult;
   onQuickAdd: (item: MenuItem) => void;
+  onDecrement: (item: MenuItem) => void;
 }) {
   const requiresModifiers = item.modifiers?.some((group) => group.required);
   const mostLikedBadge = getMostLikedBadge(item);
@@ -526,19 +528,37 @@ function MenuItemTile({
           >
             <Plus className="h-5 w-5" />
           </Link>
+        ) : qty > 0 ? (
+          <div className="absolute bottom-3 right-3 flex items-center overflow-hidden rounded-full bg-background text-foreground shadow-sm">
+            <button
+              type="button"
+              aria-label="Remove one"
+              className="grid h-10 w-10 place-items-center hover:opacity-80"
+              onClick={() => onDecrement(item)}
+            >
+              <Minus className="h-4 w-4" />
+            </button>
+            <span className="min-w-[1.25rem] text-center text-sm font-semibold">{qty}</span>
+            <button
+              type="button"
+              aria-label="Add one more"
+              disabled={!compatibility.ok}
+              className="grid h-10 w-10 place-items-center hover:opacity-80 disabled:opacity-40"
+              onClick={() => onQuickAdd(item)}
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          </div>
         ) : (
           <button
             type="button"
-            aria-label={added ? `${item.name} added to cart` : `Add ${item.name} to cart`}
+            aria-label={`Add ${item.name} to cart`}
             title={compatibility.ok ? undefined : compatibility.reason}
             disabled={!compatibility.ok}
-            className={cn(
-              "absolute bottom-3 right-3 grid h-10 min-w-10 place-items-center rounded-full px-3 font-semibold shadow-sm transition-transform hover:scale-105",
-              added ? "bg-primary text-primary-foreground" : "bg-background text-foreground",
-            )}
+            className="absolute bottom-3 right-3 grid h-10 w-10 place-items-center rounded-full bg-background text-foreground shadow-sm transition-transform hover:scale-105 disabled:opacity-40"
             onClick={() => onQuickAdd(item)}
           >
-            {added ? <span className="text-xs">Added</span> : <Plus className="h-5 w-5" />}
+            <Plus className="h-5 w-5" />
           </button>
         )}
       </div>

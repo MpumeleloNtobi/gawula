@@ -1,43 +1,77 @@
 "use client";
 
 import * as React from "react";
+import { LuShieldCheck as ShieldCheck, LuUserRound as UserRound } from "react-icons/lu";
 import { useAuth } from "@/lib/auth-store";
-import { PageHeading } from "../_components/ui";
+import { PageHeading, Panel, StatusBadge } from "../_components/ui";
 
 export default function AdminSettingsPage() {
-  const principal = useAuth((s) => s.principal);
+  const principal = useAuth((store) => store.principal);
 
-  const rows: { label: string; value: string }[] = [
+  const accountRows: { label: string; value: string }[] = [
     { label: "Name", value: principal?.name ?? "Administrator" },
-    { label: "Email", value: principal?.email ?? "–" },
+    { label: "Email", value: principal?.email ?? "-" },
     { label: "Role", value: "Admin" },
-    { label: "Email verified", value: principal?.emailVerified ? "Yes" : "Not verified" },
+  ];
+
+  const accessRows: { label: string; value: string }[] = [
+    { label: "Authentication", value: principal ? "Signed in" : "Not signed in" },
+    { label: "Email verified", value: principal?.emailVerified ? "Verified" : "Not verified" },
+    { label: "Console access", value: "Full operations" },
   ];
 
   return (
     <main>
       <PageHeading title="Settings" />
 
-      <section className="mt-6 overflow-hidden rounded-2xl border border-border bg-background">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[400px] text-sm">
-            <thead className="border-b border-border bg-secondary/40 text-left text-xs text-muted-foreground">
-              <tr>
-                <th scope="col" className="px-4 py-3 font-medium">Field</th>
-                <th scope="col" className="px-4 py-3 font-medium">Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.label} className="border-b border-border last:border-0">
-                  <td className="px-4 py-3 text-muted-foreground">{r.label}</td>
-                  <td className="px-4 py-3 font-medium">{r.value}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <div className="mt-6 grid gap-6 xl:grid-cols-2">
+        <Panel title="Account">
+          <div className="flex items-start gap-4">
+            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-secondary text-primary">
+              <UserRound className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-lg font-semibold">{principal?.name ?? "Administrator"}</p>
+              <p className="truncate text-sm text-muted-foreground">{principal?.email ?? "No email on session"}</p>
+              <div className="mt-4 grid gap-3">
+                {accountRows.map((row) => (
+                  <Detail key={row.label} label={row.label} value={row.value} />
+                ))}
+              </div>
+            </div>
+          </div>
+        </Panel>
+
+        <Panel title="Access">
+          <div className="flex items-start gap-4">
+            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-secondary text-primary">
+              <ShieldCheck className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-lg font-semibold">Operations role</p>
+                <StatusBadge tone={principal?.emailVerified ? "success" : "warning"} dot>
+                  {principal?.emailVerified ? "Verified" : "Needs verification"}
+                </StatusBadge>
+              </div>
+              <div className="mt-4 grid gap-3">
+                {accessRows.map((row) => (
+                  <Detail key={row.label} label={row.label} value={row.value} />
+                ))}
+              </div>
+            </div>
+          </div>
+        </Panel>
+      </div>
     </main>
+  );
+}
+
+function Detail({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="grid grid-cols-[9rem_1fr] gap-3 border-t border-border pt-3 text-sm first:border-t-0 first:pt-0">
+      <p className="text-muted-foreground">{label}</p>
+      <p className="min-w-0 truncate font-medium">{value}</p>
+    </div>
   );
 }

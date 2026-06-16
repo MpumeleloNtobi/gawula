@@ -18,6 +18,8 @@ import { PaymentModule } from "./modules/payment/payment.module";
 import { NotificationModule } from "./modules/notification/notification.module";
 import { AnalyticsModule } from "./modules/analytics/analytics.module";
 import { SupportModule } from "./modules/support/support.module";
+import { StoreModule } from "./modules/store/store.module";
+import { RealtimeModule } from "./modules/realtime/realtime.module";
 import { HealthController } from "./health.controller";
 import { validateEnv } from "./config/env.validation";
 
@@ -43,6 +45,8 @@ import { validateEnv } from "./config/env.validation";
     NotificationModule,
     AnalyticsModule,
     SupportModule,
+    StoreModule,
+    RealtimeModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

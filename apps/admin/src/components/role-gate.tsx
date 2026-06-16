@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useAuth, type PrincipalRole } from "@/lib/auth-store";
+import { useRouter } from "next/navigation";
+import { useAuth, homePathForRole, type PrincipalRole } from "@/lib/auth-store";
 import { ApiError } from "@/lib/api";
 import { isStrongPassword, PASSWORD_REQUIREMENT } from "@/lib/password";
 import { isValidName, NAME_REQUIREMENT } from "@/lib/name";
@@ -112,7 +113,9 @@ function CustomerAuth() {
 }
 
 function CustomerLogin({ onSwitch }: { onSwitch: () => void }) {
+  const router = useRouter();
   const login = useAuth((s) => s.login);
+  const staffLogin = useAuth((s) => s.staffLogin);
   const defaults = qaDefaults.customer;
   const [email, setEmail] = useState(showQaCreds ? defaults.email : "");
   const [password, setPassword] = useState(showQaCreds ? defaults.password : "");
@@ -124,10 +127,20 @@ function CustomerLogin({ onSwitch }: { onSwitch: () => void }) {
     setBusy(true);
     setError(null);
     try {
-      await login(email.trim(), password);
+      const principal = await login(email.trim(), password).catch(async (err) => {
+        if (err instanceof ApiError && (err.status === 401 || err.status === 400)) {
+          return staffLogin(email.trim(), password);
+        }
+        throw err;
+      });
+      const primary = principal.roles[0];
+      if (primary && primary !== "customer") {
+        router.push(homePathForRole(primary));
+        return;
+      }
+      setBusy(false);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not sign in");
-    } finally {
       setBusy(false);
     }
   }

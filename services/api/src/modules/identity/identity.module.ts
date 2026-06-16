@@ -10,10 +10,16 @@ import { JwtAuthGuard } from "./jwt-auth.guard";
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        secret: config.get<string>("JWT_ACCESS_SECRET") ?? "dev-insecure-secret-change-me",
-        signOptions: { expiresIn: (config.get<string>("JWT_ACCESS_TTL") ?? "30d") as `${number}d` },
-      }),
+      useFactory: (config: ConfigService) => {
+        const secret = config.get<string>("JWT_ACCESS_SECRET");
+        if (!secret) {
+          throw new Error("JWT_ACCESS_SECRET must be set");
+        }
+        return {
+          secret,
+          signOptions: { expiresIn: (config.get<string>("JWT_ACCESS_TTL") ?? "30d") as `${number}d` },
+        };
+      },
     }),
   ],
   controllers: [AuthController],

@@ -25,11 +25,11 @@ model Complex {
   status               String   @default("active")
   createdAt            DateTime @default(now())
 
-  outlets  Outlet[]
-  riders   Rider[]
-  shifts   Shift[]
-  carts    Cart[]
-  orders   Order[]
+  outlets Outlet[]
+  riders  Rider[]
+  shifts  Shift[]
+  carts   Cart[]
+  orders  Order[]
 }
 
 model Brand {
@@ -42,40 +42,44 @@ model Brand {
 }
 
 model Outlet {
-  id                  String   @id @default(cuid())
-  brandId             String
-  complexId           String
-  name                String
-  locationInMall      String
-  prepBufferMinutes   Int      @default(2)
-  commissionPct       Float    @default(0.13)
-  status              String   @default("active")
-  coverUrl            String?
-  tagline             String?
-  createdAt           DateTime @default(now())
+  id                String   @id @default(cuid())
+  brandId           String
+  complexId         String
+  name              String
+  locationInMall    String
+  prepBufferMinutes Int      @default(2)
+  commissionPct     Float    @default(0.13)
+  status            String   @default("active")
+  coverUrl          String?
+  tagline           String?
+  createdAt         DateTime @default(now())
 
-  brand     Brand     @relation(fields: [brandId], references: [id])
-  complex   Complex   @relation(fields: [complexId], references: [id])
+  brand     Brand           @relation(fields: [brandId], references: [id])
+  complex   Complex         @relation(fields: [complexId], references: [id])
   items     Item[]
   cartItems CartItem[]
   subOrders SubOrder[]
+  settings  OutletSettings?
+  reviews   Review[]
+  promotions Promotion[]
 
   @@index([complexId])
   @@index([brandId])
 }
 
 model Item {
-  id              String  @id @default(cuid())
+  id              String   @id @default(cuid())
   outletId        String
   name            String
   description     String
   priceCents      Int
-  prepTimeMinutes Int     @default(5)
+  prepTimeMinutes Int      @default(5)
   imageUrl        String?
-  available       Boolean @default(true)
+  available       Boolean  @default(true)
   category        String
   modifiers       Json
   createdAt       DateTime @default(now())
+  archivedAt      DateTime?
 
   outlet     Outlet      @relation(fields: [outletId], references: [id])
   cartItems  CartItem[]
@@ -89,15 +93,15 @@ model Item {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Customer {
-  id              String   @id @default(cuid())
-  email           String   @unique
-  passwordHash    String
-  phone           String?  @unique
-  name            String?
-  emailVerifiedAt DateTime?
-  mallPassActive  Boolean  @default(false)
+  id                String    @id @default(cuid())
+  email             String    @unique
+  passwordHash      String
+  phone             String?   @unique
+  name              String?
+  emailVerifiedAt   DateTime?
+  mallPassActive    Boolean   @default(false)
   mallPassExpiresAt DateTime?
-  createdAt       DateTime @default(now())
+  createdAt         DateTime  @default(now())
 
   addresses          Address[]
   carts              Cart[]
@@ -107,6 +111,7 @@ model Customer {
   roleGrants         RoleGrant[]
   riderProfile       Rider?
   riderApplications  RiderApplication[]
+  reviews            Review[]
 }
 
 model RoleGrant {
@@ -175,13 +180,17 @@ model Rider {
   name            String
   phone           String?
   vehicleType     String
+  vehicleBrand    String?
+  vehicleColour   String?
+  vehicleReg      String?
   homeComplexId   String
+  homeAddress     String?
   status          String   @default("offline")
   payoutAccountId String?
   createdAt       DateTime @default(now())
 
-  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  homeComplex Complex  @relation(fields: [homeComplexId], references: [id])
+  customer    Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  homeComplex Complex           @relation(fields: [homeComplexId], references: [id])
   shifts      Shift[]
   trips       Trip[]
   application RiderApplication?
@@ -298,6 +307,8 @@ model AdminUser {
   outletId     String?
   totpSecret   String?
   createdAt    DateTime @default(now())
+
+  reviewReplies ReviewReply[]
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -336,31 +347,53 @@ model CartItem {
 }
 
 model Order {
-  id                 String   @id @default(cuid())
+  id                 String    @id @default(cuid())
   customerId         String
   complexId          String
   addressId          String
-  status             String   @default("received")
+  status             String    @default("received")
+  fulfilmentMode     String    @default("delivery")
   foodSubtotalCents  Int
   deliveryFeeCents   Int
   serviceFeeCents    Int
-  tipCents           Int      @default(0)
+  tipCents           Int       @default(0)
   totalCents         Int
-  surgeMultiplier    Float    @default(1.0)
-  mallPassApplied    Boolean  @default(false)
+  surgeMultiplier    Float     @default(1.0)
+  mallPassApplied    Boolean   @default(false)
   paymentIntentId    String?
-  placedAt           DateTime @default(now())
+  placedAt           DateTime  @default(now())
   promisedDeliveryAt DateTime?
+  cancelledAt        DateTime?
+  cancelReason       String?
+  refundCents        Int       @default(0)
+  refundedAt         DateTime?
+  refundReason       String?
 
-  customer  Customer   @relation(fields: [customerId], references: [id])
-  complex   Complex    @relation(fields: [complexId], references: [id])
-  address   Address    @relation(fields: [addressId], references: [id])
+  customer  Customer        @relation(fields: [customerId], references: [id])
+  complex   Complex         @relation(fields: [complexId], references: [id])
+  address   Address         @relation(fields: [addressId], references: [id])
   subOrders SubOrder[]
   trip      Trip?
+  auditLogs OrderAuditLog[]
 
   @@index([customerId])
   @@index([complexId])
   @@index([status])
+}
+
+model OrderAuditLog {
+  id         String   @id @default(cuid())
+  orderId    String
+  actorId    String?
+  actorEmail String?
+  action     String
+  reason     String?
+  note       String?
+  createdAt  DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
 }
 
 model SubOrder {
@@ -373,6 +406,9 @@ model SubOrder {
   readyAt           DateTime?
   riderCollectedAt  DateTime?
   pickupCode        String?
+  pickupAttempts    Int       @default(0)
+  pickupLockedUntil DateTime?
+  cancelReason      String?
   foodSubtotalCents Int
   commissionCents   Int
 
@@ -380,6 +416,7 @@ model SubOrder {
   outlet     Outlet      @relation(fields: [outletId], references: [id])
   orderItems OrderItem[]
   tripStops  TripStop[]
+  review     Review?
 
   @@index([orderId])
   @@index([outletId])
@@ -391,6 +428,7 @@ model OrderItem {
   subOrderId     String
   itemId         String
   qty            Int
+  fulfilledQty   Int?
   modifiers      Json
   notes          String?
   unitPriceCents Int
@@ -407,16 +445,16 @@ model OrderItem {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Trip {
-  id                 String    @id @default(cuid())
-  orderId            String    @unique
-  riderId            String
-  status             String    @default("claimed")
-  claimedAt          DateTime  @default(now())
-  pickupStartedAt    DateTime?
-  deliveryStartedAt  DateTime?
-  deliveredAt        DateTime?
-  distanceKm         Float?
-  earningsCents      Int?
+  id                String    @id @default(cuid())
+  orderId           String    @unique
+  riderId           String
+  status            String    @default("claimed")
+  claimedAt         DateTime  @default(now())
+  pickupStartedAt   DateTime?
+  deliveryStartedAt DateTime?
+  deliveredAt       DateTime?
+  distanceKm        Float?
+  earningsCents     Int?
 
   order Order      @relation(fields: [orderId], references: [id])
   rider Rider      @relation(fields: [riderId], references: [id])
@@ -457,7 +495,7 @@ model PayoutRun {
 }
 
 model PayoutLine {
-  id          String @id @default(cuid())
+  id          String  @id @default(cuid())
   payoutRunId String
   partyId     String
   amountCents Int
@@ -467,4 +505,82 @@ model PayoutLine {
 
   @@index([payoutRunId])
   @@index([partyId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Storefront settings & reviews
+// ─────────────────────────────────────────────────────────────────────────────
+
+model OutletSettings {
+  id               String   @id @default(cuid())
+  outletId         String   @unique
+  phone            String?
+  email            String?
+  addressLine      String?
+  hoursJson        Json
+  autoAcceptOrders Boolean  @default(false)
+  pauseNewOrders   Boolean  @default(false)
+  showPrepTime     Boolean  @default(true)
+  allowTipping     Boolean  @default(true)
+  updatedAt        DateTime @updatedAt
+
+  outlet Outlet @relation(fields: [outletId], references: [id], onDelete: Cascade)
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  subOrderId String   @unique
+  outletId   String
+  customerId String
+  rating     Int
+  text       String
+  createdAt  DateTime @default(now())
+
+  subOrder SubOrder     @relation(fields: [subOrderId], references: [id], onDelete: Cascade)
+  outlet   Outlet       @relation(fields: [outletId], references: [id])
+  customer Customer     @relation(fields: [customerId], references: [id])
+  reply    ReviewReply?
+
+  @@index([outletId])
+  @@index([customerId])
+}
+
+model ReviewReply {
+  id        String   @id @default(cuid())
+  reviewId  String   @unique
+  authorId  String
+  text      String
+  createdAt DateTime @default(now())
+
+  review Review    @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  author AdminUser @relation(fields: [authorId], references: [id])
+}
+
+model Promotion {
+  id              String    @id @default(cuid())
+  outletId        String
+  type            String
+  percentOff      Int       @default(0)
+  amountOffCents  Int       @default(0)
+  minSpendCents   Int       @default(0)
+  buyItemId       String?
+  getItemId       String?
+  freeItemId      String?
+  itemIds         String[]  @default([])
+  category        String?
+  buyQuantity     Int       @default(1)
+  getQuantity     Int       @default(1)
+  days            Int[]     @default([])
+  startTime       String?
+  endTime         String?
+  paused          Boolean   @default(false)
+  startAt         DateTime?
+  endAt           DateTime?
+  redemptionCount Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  outlet Outlet @relation(fields: [outletId], references: [id], onDelete: Cascade)
+
+  @@index([outletId])
 }

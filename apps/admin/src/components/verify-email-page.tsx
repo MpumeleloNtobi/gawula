@@ -55,7 +55,7 @@ export function VerifyEmailPage() {
               variant="dark"
               size="lg"
               className="mt-6 w-full"
-              onClick={() => router.push(isAuthed ? "/menu" : "/login")}
+              onClick={() => router.push(isAuthed ? "/menu" : "/sign-in")}
             >
               {isAuthed ? "Start ordering" : "Go to sign in"}
             </Button>

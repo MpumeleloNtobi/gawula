@@ -4,7 +4,7 @@ import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams, notFound } from "next/navigation";
-import { Check, MapPin, Plus } from "lucide-react";
+import { LuCheck as Check, LuMapPin as MapPin, LuPlus as Plus } from "react-icons/lu";
 import { NearbyShopLogo } from "@/components/nearby-shop";
 import { getNearbyShopBySlug, shopSlug } from "@/components/nearby-shop-data";
 import { canAddBrandToCart, useCart } from "@/lib/cart-store";
@@ -52,7 +52,7 @@ export default function NearbyStoreCategoryPage() {
               href={`/menu/stores/${slug}`}
               className="inline-flex items-center gap-1.5 font-semibold text-foreground transition-opacity hover:opacity-70"
             >
-              <MapPin className="h-4 w-4 shrink-0" strokeWidth={2.25} />
+              <MapPin className="h-4 w-4 shrink-0" />
               {shop.name}
             </Link>
             <span aria-hidden className="hidden sm:inline">·</span>
@@ -108,13 +108,13 @@ export default function NearbyStoreCategoryPage() {
                 )}
               >
                 {addedItemId === item.id ? (
-                  <Check className="h-4 w-4" strokeWidth={2.5} />
+                  <Check className="h-4 w-4" />
                 ) : (
-                  <Plus className="h-4 w-4" strokeWidth={2.5} />
+                  <Plus className="h-4 w-4" />
                 )}
               </button>
             </div>
-            <div className="mt-2 text-sm font-bold">{formatPrice(item.price)}</div>
+            <div className="mt-2 text-sm font-semibold">{formatPrice(item.price)}</div>
             <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">{item.name}</p>
           </article>
         ))}

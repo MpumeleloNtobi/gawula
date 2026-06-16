@@ -2,13 +2,8 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import {
-  Camera,
-  FileText,
-  ImagePlus,
-  RefreshCw,
-  X,
-} from "lucide-react";
+import { LuCamera as Camera, LuFileText as FileText, LuX as X } from "react-icons/lu";
+import { LuImagePlus as ImagePlus, LuRefreshCw as RefreshCw } from "react-icons/lu";
 import { Button } from "@/components/ui/button";
 import { LoadingDots } from "@/components/ui/loading-dots";
 import { AddressAutocomplete } from "@/components/address-autocomplete";

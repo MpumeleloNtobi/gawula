@@ -7,6 +7,20 @@ export type SubOrderStatus =
   | "rejected"
   | "cancelled";
 
+export const SUB_ORDER_STATUSES: SubOrderStatus[] = [
+  "pending",
+  "accepted",
+  "preparing",
+  "ready",
+  "collected",
+  "rejected",
+  "cancelled",
+];
+
+export function isSubOrderStatus(value: string): value is SubOrderStatus {
+  return (SUB_ORDER_STATUSES as string[]).includes(value);
+}
+
 export type OrderPublicStatus =
   | "received"
   | "preparing"

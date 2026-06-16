@@ -6,6 +6,7 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
+import type { RiderApplication } from "@prisma/client";
 import { PrismaService } from "../../infrastructure/prisma.module";
 import { CreateRiderApplicationDto } from "./rider.dto";
 
@@ -75,21 +76,13 @@ export class RiderService {
     const applications = await this.prisma.riderApplication.findMany({
       orderBy: { createdAt: "desc" },
     });
-    return applications.map((a) => ({
-      id: a.id,
-      name: `${a.firstName} ${a.lastName}`.trim(),
-      email: a.email,
-      phone: a.phone,
-      areaLabel: a.areaLabel,
-      waitlisted: a.waitlisted,
-      vehicleType: a.vehicleType,
-      hasSmartphone: a.hasSmartphone,
-      idNumber: a.idNumber,
-      stage: a.stage,
-      rejectionReason: a.rejectionReason,
-      createdAt: a.createdAt,
-      decidedAt: a.decidedAt,
-    }));
+    return applications.map((application) => this.toAdminDto(application));
+  }
+
+  async getForAdmin(id: string) {
+    const application = await this.prisma.riderApplication.findUnique({ where: { id } });
+    if (!application) throw new NotFoundException("Application not found");
+    return this.toAdminDto(application);
   }
 
   async approve(id: string, reviewerId: string) {
@@ -162,5 +155,77 @@ export class RiderService {
       data: { stage: "rejected", rejectionReason: reason.trim(), reviewerId, decidedAt: new Date() },
     });
     return { id, stage: "rejected" };
+  }
+
+  async promoteFromWaitlist(id: string, reviewerId: string) {
+    const application = await this.prisma.riderApplication.findUnique({ where: { id } });
+    if (!application) throw new NotFoundException("Application not found");
+    if (application.stage !== "submitted") {
+      throw new ConflictException("Only submitted applications can be promoted from the waitlist");
+    }
+    if (!application.waitlisted) {
+      throw new BadRequestException("Application is not waitlisted");
+    }
+    await this.prisma.riderApplication.update({
+      where: { id },
+      data: { waitlisted: false, reviewerId },
+    });
+    return { id, waitlisted: false };
+  }
+
+  bulkApprove(ids: string[], reviewerId: string) {
+    return this.bulk(ids, (id) => this.approve(id, reviewerId));
+  }
+
+  bulkReject(ids: string[], reviewerId: string, reason: string) {
+    return this.bulk(ids, (id) => this.reject(id, reviewerId, reason));
+  }
+
+  bulkPromoteFromWaitlist(ids: string[], reviewerId: string) {
+    return this.bulk(ids, (id) => this.promoteFromWaitlist(id, reviewerId));
+  }
+
+  private async bulk<T extends Record<string, unknown>>(
+    ids: string[],
+    action: (id: string) => Promise<T>,
+  ) {
+    const results = [];
+    for (const id of [...new Set(ids)]) {
+      try {
+        results.push({ ok: true as const, ...(await action(id)) });
+      } catch (error) {
+        results.push({
+          id,
+          ok: false as const,
+          message: error instanceof Error ? error.message : "Action failed",
+        });
+      }
+    }
+    return { results };
+  }
+
+  private toAdminDto(application: RiderApplication) {
+    return {
+      id: application.id,
+      name: `${application.firstName} ${application.lastName}`.trim(),
+      firstName: application.firstName,
+      lastName: application.lastName,
+      email: application.email,
+      phone: application.phone,
+      areaLabel: application.areaLabel,
+      waitlisted: application.waitlisted,
+      vehicleType: application.vehicleType,
+      hasSmartphone: application.hasSmartphone,
+      idNumber: application.idNumber,
+      idFrontDocName: application.idFrontDocName,
+      idBackDocName: application.idBackDocName,
+      selfieDocName: application.selfieDocName,
+      fullBodyDocName: application.fullBodyDocName,
+      licenceDocName: application.licenceDocName,
+      stage: application.stage,
+      rejectionReason: application.rejectionReason,
+      createdAt: application.createdAt,
+      decidedAt: application.decidedAt,
+    };
   }
 }

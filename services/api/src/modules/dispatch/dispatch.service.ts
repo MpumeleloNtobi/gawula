@@ -80,7 +80,6 @@ export class DispatchService {
         },
       },
     });
-    await this.prisma.rider.update({ where: { id: rider.id }, data: { status: "on_trip" } });
     await this.orders.recomputeOrderStatus(order.id);
     return this.tripDetail(order.id);
   }
@@ -140,12 +139,6 @@ export class DispatchService {
     });
     await this.prisma.order.update({ where: { id: trip.orderId }, data: { status: "delivered" } });
 
-    const remaining = await this.prisma.trip.count({
-      where: { riderId: rider.id, status: { notIn: ["delivered", "cancelled_by_ops"] } },
-    });
-    if (remaining === 0) {
-      await this.prisma.rider.update({ where: { id: rider.id }, data: { status: "online" } });
-    }
     return this.tripDetail(trip.orderId);
   }
 
@@ -158,16 +151,78 @@ export class DispatchService {
     return Promise.all(trips.map((t) => this.tripDetail(t.orderId)));
   }
 
-  async me(accountId: string) {
+  async history(accountId: string) {
     const rider = await this.requireRider(accountId);
-    return { id: rider.id, name: rider.name, status: rider.status };
+    const trips = await this.prisma.trip.findMany({
+      where: { riderId: rider.id, status: "delivered" },
+      orderBy: { deliveredAt: "desc" },
+      include: { order: { include: { complex: true, address: true, customer: true } } },
+    });
+    return trips.map((t) => ({
+      tripId: t.id,
+      orderId: t.orderId,
+      complexName: t.order.complex.name,
+      customerName: t.order.customer.name,
+      dropoffSuburb: t.order.address.suburb ?? t.order.address.city,
+      earningsCents: t.earningsCents ?? 0,
+      deliveredAt: t.deliveredAt,
+    }));
+  }
+
+  async me(accountId: string) {
+    const rider = await this.prisma.rider.findUnique({
+      where: { customerId: accountId },
+    });
+    if (!rider) throw new NotFoundException("Rider profile not found for this account");
+    const activeTrips = await this.prisma.trip.count({
+      where: { riderId: rider.id, status: { notIn: ["delivered", "cancelled_by_ops"] } },
+    });
+    return {
+      id: rider.id,
+      name: rider.name,
+      status: rider.status,
+      onTrip: activeTrips > 0,
+      phone: rider.phone,
+      vehicleType: rider.vehicleType,
+      vehicleBrand: rider.vehicleBrand,
+      vehicleColour: rider.vehicleColour,
+      vehicleReg: rider.vehicleReg,
+      homeAddress: rider.homeAddress,
+      joinedAt: rider.createdAt,
+    };
+  }
+
+  async updateProfile(
+    accountId: string,
+    input: {
+      name?: string;
+      phone?: string;
+      vehicleType?: string;
+      vehicleBrand?: string;
+      vehicleColour?: string;
+      vehicleReg?: string;
+      homeAddress?: string;
+    },
+  ) {
+    const rider = await this.requireRider(accountId);
+    const isBicycle = (input.vehicleType ?? rider.vehicleType) === "bicycle";
+    await this.prisma.rider.update({
+      where: { id: rider.id },
+      data: {
+        name: input.name?.trim() ?? undefined,
+        phone: input.phone?.trim() || undefined,
+        vehicleType: input.vehicleType ?? undefined,
+        vehicleBrand: isBicycle ? null : input.vehicleBrand?.trim() || undefined,
+        vehicleColour: isBicycle ? null : input.vehicleColour?.trim() || undefined,
+        vehicleReg: isBicycle ? null : input.vehicleReg?.trim() || undefined,
+        homeAddress: input.homeAddress?.trim() || undefined,
+      },
+    });
+    return this.me(accountId);
   }
 
   async setAvailability(accountId: string, online: boolean) {
     const rider = await this.requireRider(accountId);
-    if (rider.status === "on_trip") {
-      throw new BadRequestException("Finish your active trip before changing availability");
-    }
     const status = online ? "online" : "offline";
     const updated = await this.prisma.rider.update({
       where: { id: rider.id },

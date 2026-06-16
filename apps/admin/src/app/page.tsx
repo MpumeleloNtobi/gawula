@@ -1,7 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
-import { MapPin } from "lucide-react";
 import { LocationPicker } from "@/components/location-picker";
+import { WhereWeOperate } from "@/components/where-we-operate";
+import { FloatingContactButton } from "@/components/floating-contact-button";
 
 const FEATURE_CARDS = [
   {
@@ -24,26 +25,6 @@ const FEATURE_CARDS = [
     btnFg: "text-white",
     href: "/partners",
   },
-  {
-    title: "Get the best Gawula experience",
-    body: "Experience the best your neighbourhood has to offer, all in one app.",
-    cta: "Get the app",
-    bg: "bg-[#FFE3DD]",
-    fg: "text-[#4A0D00]",
-    btnBg: "bg-primary",
-    btnFg: "text-white",
-    href: "/download",
-  },
-];
-
-const CITIES = [
-  { name: "Johannesburg", x: 70.6, y: 30.8, live: true },
-  { name: "Pretoria", x: 72.2, y: 28.0, live: true },
-  { name: "Bloemfontein", x: 59.8, y: 54.5, live: false },
-  { name: "Cape Town", x: 14.3, y: 91.7, live: false },
-  { name: "Durban", x: 88.4, y: 60.5, live: false },
-  { name: "Polokwane", x: 79.2, y: 14.6, live: false },
-  { name: "Port Elizabeth", x: 56.5, y: 92.0, live: false },
 ];
 
 export default function LandingPage() {
@@ -70,13 +51,6 @@ export default function LandingPage() {
               </p>
               <div className="mx-auto mt-8 w-full max-w-xl">
                 <LocationPicker />
-                <p className="mt-4 text-sm text-white/85">
-                  Or{" "}
-                  <Link href="/login" className="font-semibold text-white hover:text-white/80">
-                    sign in
-                  </Link>{" "}
-                  to order
-                </p>
               </div>
             </div>
           </div>
@@ -107,68 +81,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="bg-accent/60">
-        <div className="container py-16">
-          <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-center">
-            <div className="relative mx-auto aspect-[1280/1029] w-full max-w-2xl overflow-hidden rounded-3xl bg-card">
-              <Image
-                src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/South_Africa_location_map.svg/1280px-South_Africa_location_map.svg.png"
-                alt="Map of South Africa highlighting the cities where Gawula operates"
-                fill
-                sizes="(min-width: 1024px) 640px, 100vw"
-                className="object-cover"
-              />
-              {CITIES.map((city) => (
-                <span
-                  key={city.name}
-                  aria-hidden
-                  style={{ left: `${city.x}%`, top: `${city.y}%` }}
-                  className="absolute flex -translate-x-1/2 -translate-y-full flex-col items-center"
-                >
-                  <MapPin
-                    className={`h-6 w-6 drop-shadow ${
-                      city.live ? "fill-primary text-[#F0D2B8]" : "fill-muted-foreground/40 text-muted-foreground"
-                    }`}
-                    strokeWidth={city.live ? 2 : 1.5}
-                  />
-                </span>
-              ))}
-            </div>
-            <div>
-              <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-                Where we operate
-              </h2>
-              <ul className="mt-6 space-y-1">
-                {CITIES.map((city) => (
-                  <li
-                    key={city.name}
-                    className="flex items-center justify-between gap-3 py-2"
-                  >
-                    <span className="flex items-center gap-3">
-                      <span
-                        aria-hidden
-                        className={`h-2.5 w-2.5 rounded-full ${
-                          city.live ? "bg-primary" : "bg-muted-foreground/30"
-                        }`}
-                      />
-                      <span className="text-base text-foreground">{city.name}</span>
-                    </span>
-                    <span
-                      className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                        city.live
-                          ? "bg-primary/10 text-primary"
-                          : "bg-muted text-muted-foreground"
-                      }`}
-                    >
-                      {city.live ? "Live" : "Coming soon"}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
+      <WhereWeOperate />
+      <FloatingContactButton />
     </main>
   );
 }

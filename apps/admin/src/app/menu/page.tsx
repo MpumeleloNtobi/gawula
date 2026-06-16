@@ -3,41 +3,14 @@
 import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
-import {
-  Beef,
-  CakeSlice,
-  Check,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  Coffee,
-  CookingPot,
-  CupSoda,
-  Drumstick,
-  Fish,
-  Flame,
-  Hamburger,
-  Heart,
-  Leaf,
-  MapPin,
-  Medal,
-  Milk,
-  Pizza,
-  Salad,
-  Search,
-  Soup,
-  Sprout,
-  Star,
-  Tag,
-  Utensils,
-  UtensilsCrossed,
-  Wheat,
-  X,
-  type LucideIcon,
-} from "lucide-react";
+import { LuCheck as Check, LuChevronDown as ChevronDown, LuChevronLeft as ChevronLeft, LuChevronRight as ChevronRight, LuCoffee as Coffee, LuFlame as Flame, LuHeart as Heart, LuHeart as HeartFilled, LuMapPin as MapPin, LuSearch as Search, LuStar as Star, LuStar as StarOutline, LuTag as Tag, LuUtensilsCrossed as UtensilsCrossed, LuX as X } from "react-icons/lu";
+import { LuBeef as Beef, LuCakeSlice as CakeSlice, LuCookingPot as CookingPot, LuCupSoda as CupSoda, LuDrumstick as Drumstick, LuFish as Fish, LuSandwich as Hamburger, LuLeaf as Leaf, LuMedal as Medal, LuMilk as Milk, LuPizza as Pizza, LuSalad as Salad, LuSoup as Soup, LuSprout as Sprout, LuUtensils as Utensils, LuWheat as Wheat } from "react-icons/lu";
+import type { IconType } from "react-icons";
 import { FloatingContactButton } from "@/components/floating-contact-button";
 import { NearbyShopLogo } from "@/components/nearby-shop";
 import { StoreLogo } from "@/components/store-logo";
+import { WalkingPickupIcon } from "@/components/walking-pickup-icon";
+import { LoadingDots } from "@/components/ui/loading-dots";
 import { SHOPS_NEAR_YOU, buildShopClusters, shopSlug } from "@/components/nearby-shop-data";
 
 const SHOP_CLUSTERS = buildShopClusters();
@@ -52,7 +25,7 @@ const DELIVERY_LOCATIONS = [
   { hubId: "parkhurst", name: "Parkhurst", address: "4th Avenue, Parkhurst, Johannesburg, GT, 2193, ZA" },
 ];
 
-const CUISINES: { name: string; Icon: LucideIcon }[] = [
+const CUISINES: { name: string; Icon: IconType }[] = [
   { name: "Burgers", Icon: Hamburger },
   { name: "Chicken", Icon: Drumstick },
   { name: "Pizza", Icon: Pizza },
@@ -73,26 +46,16 @@ const CUISINES: { name: string; Icon: LucideIcon }[] = [
   { name: "Desserts", Icon: CakeSlice },
 ];
 
-function WalkingPickupIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" {...props}>
-      <path
-        d="M13.49 5.48a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm-3.6 13.9 1-4.4 2.1 2v5h2v-6.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4Z"
-      />
-    </svg>
-  );
-}
-
 type FilterKey = "offers" | "deliveryFee" | "highestRated" | "rating" | "sort" | "bundleType";
 type FilterPopup = "rating" | "sort" | "bundleType";
 type RatingFilter = "any" | "3" | "3.5" | "4" | "4.5" | "5";
 type SortMode = "recommended" | "rating";
 type BundleType = "mall" | "complex" | "cluster";
-const FILTERS: { key: FilterKey; label: string; Icon?: LucideIcon; trailing?: boolean }[] = [
+const FILTERS: { key: FilterKey; label: string; Icon?: IconType; trailing?: boolean }[] = [
   { key: "offers", label: "Offers", Icon: Tag },
   { key: "deliveryFee", label: "Delivery fee" },
   { key: "highestRated", label: "Highest rated", Icon: Medal },
-  { key: "rating", label: "Rating", Icon: Star, trailing: true },
+  { key: "rating", label: "Rating", Icon: StarOutline, trailing: true },
   { key: "sort", label: "Sort", trailing: true },
   { key: "bundleType", label: "Bundle type", trailing: true },
 ];
@@ -773,47 +736,13 @@ function readSearchQuery() {
   return new URLSearchParams(window.location.search).get("q")?.trim() ?? "";
 }
 
-const PROMO_CARDS = [
-  {
-    title: "Get the app",
-    body: "Reorder favourites in two taps and track your rider block by block.",
-    cta: "Download",
-    image: "https://images.unsplash.com/photo-1565299543923-37dd37887442?auto=format&fit=crop&w=900&q=80",
-    bg: "bg-[#FFF1E6]",
-    fg: "text-[#3D1D00]",
-    btnBg: "bg-[#3D1D00]",
-    btnFg: "text-white",
-    href: "#",
-  },
-  {
-    title: "Cater your team",
-    body: "Group orders for the office, with one invoice and one delivery.",
-    cta: "Talk to us",
-    image: "https://images.unsplash.com/photo-1543353071-10c8ba85a904?auto=format&fit=crop&w=900&q=80",
-    bg: "bg-[#FCE4D8]",
-    fg: "text-[#5B1A00]",
-    btnBg: "bg-[#5B1A00]",
-    btnFg: "text-white",
-    href: "#",
-  },
-  {
-    title: "Add your restaurant",
-    body: "Reach more customers and grow sales. Start with 0% commissions for 30 days.",
-    cta: "Get started",
-    image: "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=900&q=80",
-    bg: "bg-[#FFE3DD]",
-    fg: "text-[#4A0D00]",
-    btnBg: "bg-primary",
-    btnFg: "text-white",
-    href: "#",
-  },
-];
-
 const LOCATION_DISTANCE_KM: Record<string, number> = {
   "mall-of-africa-food-court": 4.2,
   "waterfall-corner": 3.1,
   "the-zone-rosebank": 8.6,
 };
+
+const SERVICE_RADIUS_KM = 30;
 
 const LOCATION_TILES = STORE_LOCATIONS.map((location) => {
   const brands = BRANDS.filter((brand) => brand.storeLocationId === location.id);
@@ -839,10 +768,28 @@ const LOCATION_TILES = STORE_LOCATIONS.map((location) => {
   };
 }).sort((a, b) => a.distanceKm - b.distanceKm);
 
+function haversineKm(
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
+) {
+  const R = 6371;
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+  const lat1 = (a.lat * Math.PI) / 180;
+  const lat2 = (b.lat * Math.PI) / 180;
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
 export default function MenuPage() {
   const cartLines = useCart((s) => s.lines);
   const hubId = useCart((s) => s.hub);
   const setHub = useCart((s) => s.setHub);
+  const address = useCart((s) => s.address);
+  const coords = useCart((s) => s.coords);
+  const cartHydrated = useCart((s) => s.hydrated);
   const [mobileFulfillment, setMobileFulfillment] = React.useState<"delivery" | "pickup">("delivery");
   const [fulfillmentMenuOpen, setFulfillmentMenuOpen] = React.useState(false);
   const [fulfillmentDraft, setFulfillmentDraft] = React.useState<"delivery" | "pickup">("delivery");
@@ -876,6 +823,21 @@ export default function MenuPage() {
   const [popupPosition, setPopupPosition] = React.useState<{ top: number; left: number } | null>(null);
   const [likedRestaurants, setLikedRestaurants] = React.useState<Set<string>>(() => new Set());
   const filterPopupRef = React.useRef<HTMLDivElement>(null);
+
+  const origin = React.useMemo(() => {
+    const hubCoords = hubId ? HUBS.find((hub) => hub.id === hubId)?.coordinates ?? null : null;
+    return hubCoords ?? coords;
+  }, [hubId, coords]);
+
+  const locationTiles = React.useMemo(() => {
+    if (!origin) {
+      return LOCATION_TILES.map((tile) => ({ ...tile, distanceKm: null as number | null }));
+    }
+    return LOCATION_TILES.map((tile) => {
+      const d = haversineKm(origin, tile.location.coordinates);
+      return { ...tile, distanceKm: (d <= SERVICE_RADIUS_KM ? d : null) as number | null };
+    }).sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity));
+  }, [origin]);
 
   const updateCategoryScroll = React.useCallback(() => {
     const scroller = categoryScrollerRef.current;
@@ -961,8 +923,13 @@ export default function MenuPage() {
   const activeLocation =
     DELIVERY_LOCATIONS.find((location) => location.hubId === hubId) ?? DELIVERY_LOCATIONS[0];
   const activeHub = HUBS.find((hub) => hub.id === hubId) ?? HUBS[0];
+  const isCustomAddress =
+    Boolean(address) && !DELIVERY_LOCATIONS.some((location) => location.address === address);
+  const deliveryName = isCustomAddress
+    ? (address as string).split(",")[0].trim()
+    : activeLocation.name;
   const fulfillmentLocationName =
-    mobileFulfillment === "delivery" ? activeLocation.name : activeHub.name;
+    mobileFulfillment === "delivery" ? deliveryName : activeHub.name;
 
   const chooseLocation = (nextHubId: string) => {
     const location = DELIVERY_LOCATIONS.find((option) => option.hubId === nextHubId);
@@ -1215,15 +1182,28 @@ export default function MenuPage() {
   const hasActiveControls = Boolean(
     activeCategory || activeLocationId || activeFilters.length || ratingFilter !== "any" || sortMode !== "recommended" || bundleTypeFilter.length > 0 || searchQuery,
   );
+
+  if (!cartHydrated) {
+    return (
+      <div
+        role="status"
+        aria-label="Loading"
+        className="fixed inset-0 z-[60] grid place-items-center bg-background text-foreground"
+      >
+        <LoadingDots />
+      </div>
+    );
+  }
+
   return (
-    <div className="pb-32">
+    <div className="overflow-x-clip pb-32">
       <section className="container pt-1 lg:hidden">
         <div className="flex items-center gap-3">
           <button
             type="button"
             aria-haspopup="dialog"
             aria-expanded={locationSheetOpen}
-            className="flex min-w-0 flex-1 items-center gap-2 text-left"
+            className="mr-auto flex min-w-0 items-center gap-2 text-left"
             onClick={() => setLocationSheetOpen(true)}
           >
             <span className="flex min-w-0 flex-col">
@@ -1232,7 +1212,7 @@ export default function MenuPage() {
               </span>
               <span className="truncate text-sm font-semibold">{fulfillmentLocationName}</span>
             </span>
-            <ChevronDown className="ml-1 h-4 w-4 shrink-0" strokeWidth={2.2} />
+            <ChevronDown className="ml-1 h-4 w-4 shrink-0" />
           </button>
           <div className="relative shrink-0">
             <button
@@ -1247,7 +1227,7 @@ export default function MenuPage() {
               }}
             >
               {mobileFulfillment === "delivery" ? "Delivery" : "Pickup"}
-              <ChevronDown className="h-4 w-4" strokeWidth={2.2} />
+              <ChevronDown className="h-4 w-4" />
             </button>
             {fulfillmentMenuOpen ? (
               <div
@@ -1302,10 +1282,10 @@ export default function MenuPage() {
         </div>
       </section>
 
-      <section className="container pt-4 lg:hidden">
+      <section className="container pt-4 md:hidden">
         <form role="search" onSubmit={(event) => event.preventDefault()}>
           <div className="flex h-10 items-center gap-3 rounded-full bg-secondary px-4">
-            <Search className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={2.2} />
+            <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
             <input
               type="search"
               aria-label="Search Gawula"
@@ -1352,8 +1332,28 @@ export default function MenuPage() {
               </button>
             </div>
             <div className="-mx-3 mt-3 grid gap-1">
+              {mobileFulfillment === "delivery" && isCustomAddress ? (
+                <div className="flex items-start gap-3 rounded-2xl px-3 py-3 text-left">
+                  <span
+                    className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full border-2 border-foreground bg-background"
+                    aria-hidden="true"
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full bg-foreground" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-semibold">{deliveryName}</span>
+                    <span className="mt-0.5 block text-sm leading-snug text-muted-foreground">
+                      {(address as string)
+                        .split(",")
+                        .slice(1)
+                        .join(",")
+                        .trim() || address}
+                    </span>
+                  </span>
+                </div>
+              ) : null}
               {DELIVERY_LOCATIONS.map((location) => {
-                const selected = location.hubId === hubId;
+                const selected = !isCustomAddress && location.hubId === hubId;
                 return (
                   <button
                     key={location.hubId}
@@ -1396,7 +1396,7 @@ export default function MenuPage() {
               disabled={!categoryScroll.canScrollLeft}
               onClick={() => scrollCategories("left")}
             >
-              <ChevronLeft className="h-5 w-5" strokeWidth={2.4} />
+              <ChevronLeft className="h-5 w-5" />
             </button>
             <div
               ref={categoryScrollerRef}
@@ -1420,7 +1420,7 @@ export default function MenuPage() {
                       activeCategory === c.name && "bg-secondary",
                     )}
                   >
-                    <c.Icon className="h-8 w-8" strokeWidth={1.8} />
+                    <c.Icon className="h-8 w-8" />
                   </span>
                   <span className="text-center text-[13px] font-medium leading-tight">
                     {c.name}
@@ -1436,7 +1436,7 @@ export default function MenuPage() {
               disabled={!categoryScroll.canScrollRight}
               onClick={() => scrollCategories("right")}
             >
-              <ChevronRight className="h-5 w-5" strokeWidth={2.4} />
+              <ChevronRight className="h-5 w-5" />
             </button>
           </div>
         </div>
@@ -1466,7 +1466,7 @@ export default function MenuPage() {
                   toggleFilter(f.key);
                 }}
               >
-                {f.Icon ? <f.Icon className="h-4 w-4" strokeWidth={2.2} /> : null}
+                {f.Icon ? <f.Icon className="h-4 w-4" /> : null}
                 {filterLabel(f.key, f.label)}
                 {f.trailing ? <ChevronDown className="h-4 w-4" /> : null}
               </button>
@@ -1476,7 +1476,7 @@ export default function MenuPage() {
               <button
                 type="button"
                 onClick={resetControls}
-                className="inline-flex h-9 shrink-0 items-center rounded-full px-4 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground"
+                className="inline-flex h-9 shrink-0 items-center rounded-full px-4 text-sm font-semibold text-muted-foreground"
               >
                 Reset
               </button>
@@ -1553,7 +1553,7 @@ export default function MenuPage() {
               disabled={!bundleScroll.canScrollLeft}
               onClick={() => scrollBundles("left")}
             >
-              <ChevronLeft className="h-4 w-4" strokeWidth={2.4} />
+              <ChevronLeft className="h-4 w-4" />
             </button>
             <button
               type="button"
@@ -1562,22 +1562,22 @@ export default function MenuPage() {
               disabled={!bundleScroll.canScrollRight}
               onClick={() => scrollBundles("right")}
             >
-              <ChevronRight className="h-4 w-4" strokeWidth={2.4} />
+              <ChevronRight className="h-4 w-4" />
             </button>
             <Link
               href="/menu/bundles"
               aria-label="Show all bundle stores"
               className="grid h-8 w-8 place-items-center rounded-full bg-secondary sm:hidden"
             >
-              <ChevronRight className="h-4 w-4" strokeWidth={2.4} />
+              <ChevronRight className="h-4 w-4" />
             </Link>
           </div>
         </div>
         <div
           ref={bundleScrollerRef}
-          className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-2 scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-2 scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:px-0"
         >
-          {LOCATION_TILES.filter(
+          {locationTiles.filter(
             (tile) => bundleTypeFilter.length === 0 || bundleTypeFilter.includes(tile.location.type),
           ).map((tile) => {
             const isActive = activeLocationId === tile.location.id;
@@ -1608,7 +1608,9 @@ export default function MenuPage() {
                     {tile.restaurantCount} stores in this bundle
                   </p>
                   <p className="text-sm tabular-nums text-muted-foreground">
-                    {tile.distanceKm.toFixed(1)} km away
+                    {tile.distanceKm != null
+                      ? `${tile.distanceKm.toFixed(1)} km away`
+                      : tile.location.area}
                   </p>
                 </div>
               </div>
@@ -1616,6 +1618,8 @@ export default function MenuPage() {
           })}
           {(bundleTypeFilter.length === 0 ? SHOP_CLUSTERS : []).map((cluster) => {
             const total = cluster.members.length + 1;
+            const clusterDistance = origin ? haversineKm(origin, cluster.anchor.coordinates) : null;
+            const showClusterDistance = clusterDistance != null && clusterDistance <= SERVICE_RADIUS_KM;
             return (
               <div key={cluster.id} className="flex w-[200px] shrink-0 flex-col gap-3 sm:w-[260px]">
                 <Link
@@ -1632,7 +1636,9 @@ export default function MenuPage() {
                 <div className="flex flex-col items-center gap-0.5 text-center">
                   <p className="text-sm font-medium text-foreground">{total} stores nearby</p>
                   <p className="text-sm tabular-nums text-muted-foreground">
-                    {cluster.radiusKm.toFixed(1)} km · {cluster.anchor.area}
+                    {showClusterDistance
+                      ? `${clusterDistance.toFixed(1)} km · ${cluster.anchor.area}`
+                      : cluster.anchor.area}
                   </p>
                 </div>
               </div>
@@ -1647,7 +1653,7 @@ export default function MenuPage() {
             <h2 className="text-2xl font-semibold tracking-tight">Individual stores near you</h2>
             {activeLocationId ? (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-foreground">
-                <MapPin className="h-3 w-3" strokeWidth={2.4} />
+                <MapPin className="h-3 w-3" />
                 {STORE_LOCATIONS.find((l) => l.id === activeLocationId)?.name}
                 <button
                   type="button"
@@ -1655,7 +1661,7 @@ export default function MenuPage() {
                   onClick={() => setActiveLocationId(null)}
                   className="-mr-1 grid h-4 w-4 place-items-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
                 >
-                  <X className="h-3 w-3" strokeWidth={2.4} />
+                  <X className="h-3 w-3" />
                 </button>
               </span>
             ) : null}
@@ -1671,7 +1677,7 @@ export default function MenuPage() {
               disabled={!storeScroll.canScrollLeft}
               onClick={() => scrollStores("left")}
             >
-              <ChevronLeft className="h-4 w-4" strokeWidth={2.4} />
+              <ChevronLeft className="h-4 w-4" />
             </button>
             <button
               type="button"
@@ -1680,20 +1686,20 @@ export default function MenuPage() {
               disabled={!storeScroll.canScrollRight}
               onClick={() => scrollStores("right")}
             >
-              <ChevronRight className="h-4 w-4" strokeWidth={2.4} />
+              <ChevronRight className="h-4 w-4" />
             </button>
             <Link
               href="/menu/stores"
               aria-label="Show all individual stores"
               className="grid h-8 w-8 place-items-center rounded-full bg-secondary sm:hidden"
             >
-              <ChevronRight className="h-4 w-4" strokeWidth={2.4} />
+              <ChevronRight className="h-4 w-4" />
             </Link>
           </div>
         </div>
         <div
           ref={storeScrollerRef}
-          className="-mx-4 flex gap-6 overflow-x-auto px-4 pb-2 scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="-mx-4 flex gap-6 overflow-x-auto px-4 pb-2 scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:px-0"
         >
           {visibleNearbyShops.map((shop) => (
             <Link key={shop.name} href={`/menu/stores/${shopSlug(shop.name)}`} className="block w-24 shrink-0 sm:w-32">
@@ -1722,7 +1728,7 @@ export default function MenuPage() {
             <h2 className="text-2xl font-semibold tracking-tight">All stores</h2>
             {activeLocationId ? (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1 text-xs font-semibold text-foreground">
-                <MapPin className="h-3 w-3" strokeWidth={2.4} />
+                <MapPin className="h-3 w-3" />
                 {STORE_LOCATIONS.find((l) => l.id === activeLocationId)?.name}
                 <button
                   type="button"
@@ -1730,7 +1736,7 @@ export default function MenuPage() {
                   onClick={() => setActiveLocationId(null)}
                   className="-mr-1 grid h-4 w-4 place-items-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
                 >
-                  <X className="h-3 w-3" strokeWidth={2.4} />
+                  <X className="h-3 w-3" />
                 </button>
               </span>
             ) : null}
@@ -1807,7 +1813,7 @@ export default function MenuPage() {
                         <h3 className="text-base font-semibold leading-tight sm:text-lg">{restaurant.name}</h3>
                         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
                           <span className="inline-flex items-center gap-1 font-semibold text-foreground">
-                            <Star className="h-3.5 w-3.5 fill-foreground" />
+                            <Star className="h-3.5 w-3.5" />
                             {restaurant.rating.toFixed(1)}
                           </span>
                           <span>{formatRatingCount(restaurant.ratingCount)}</span>
@@ -1857,7 +1863,7 @@ export default function MenuPage() {
                       )}
                       onClick={() => toggleLike(restaurant.id)}
                     >
-                      <Heart className={cn("h-5 w-5", liked && "fill-current")} strokeWidth={2.25} />
+                      {liked ? <HeartFilled className="h-5 w-5" /> : <Heart className="h-5 w-5" />}
                     </button>
                   {restaurant.distanceKm ? (
                     <Link
@@ -1971,7 +1977,7 @@ function OptionRow({
       >
         {selected ? (
           checkbox ? (
-            <Check className="h-3 w-3 text-background" strokeWidth={3} />
+            <Check className="h-3 w-3 text-background" />
           ) : (
             <span className="h-1.5 w-1.5 rounded-full bg-foreground" />
           )

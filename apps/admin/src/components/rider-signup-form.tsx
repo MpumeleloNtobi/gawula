@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Check, ChevronDown, Upload, X } from "lucide-react";
+import { LuCheck as Check, LuChevronDown as ChevronDown, LuUpload as Upload, LuX as X } from "react-icons/lu";
 import { Button } from "@/components/ui/button";
 import {
   RIDER_VEHICLES,
@@ -218,7 +218,7 @@ export function RiderSignupForm({ areas }: RiderSignupFormProps) {
     if (!validateStep(1) || !validateStep(2) || !validateStep(3)) return;
     if (submitting) return;
     if (!token) {
-      router.push("/login?next=/riders");
+      router.push("/sign-in?next=/riders");
       return;
     }
     setSubmitError(null);
@@ -530,7 +530,7 @@ export function RiderSignupForm({ areas }: RiderSignupFormProps) {
             </Field>
 
             <div className="grid gap-2.5">
-              <p className="text-sm font-medium">Verify it's you</p>
+              <p className="text-sm font-medium">Verify it&apos;s you</p>
               <FileField
                 id="rider-doc-id-front"
                 label="Front of your ID"

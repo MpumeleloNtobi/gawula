@@ -1,9 +1,17 @@
 "use client";
 
 import { useEffect } from "react";
-import { Check } from "lucide-react";
+import { LuShoppingBag, LuUtensils, LuBell, LuBike, LuHouse } from "react-icons/lu";
 import { ORDER_STATUSES, OrderStatus, statusIndex, nextStatus, useOrders } from "@/lib/orders-store";
 import { cn } from "@/lib/utils";
+
+const STEP_ICONS: Record<string, React.ReactNode> = {
+  received:     <LuShoppingBag className="h-4 w-4" />,
+  preparing:    <LuUtensils className="h-4 w-4" />,
+  ready:        <LuBell className="h-4 w-4" />,
+  "on-the-way": <LuBike className="h-4 w-4" />,
+  delivered:    <LuHouse className="h-4 w-4" />,
+};
 
 type Props = {
   orderId: string;
@@ -11,7 +19,7 @@ type Props = {
   createdAt: number;
 };
 
-export function OrderTracker({ orderId, status, createdAt }: Props) {
+export function OrderTracker({ orderId, status }: Props) {
   const advance = useOrders((s) => s.advanceStatus);
   const currentIndex = statusIndex(status);
 
@@ -30,56 +38,43 @@ export function OrderTracker({ orderId, status, createdAt }: Props) {
   }, [orderId, status, advance]);
 
   return (
-    <div className="rounded-2xl border bg-card p-6 sm:p-8">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-xs font-medium tracking-[0.18em] text-muted-foreground">
-            {status === "delivered" ? "Order complete" : "Live status"}
-          </p>
-          <h2 className="mt-2 text-2xl font-semibold tracking-[-0.02em] sm:text-3xl">
-            {ORDER_STATUSES[currentIndex]?.label ?? "Received"}
-          </h2>
-        </div>
-      </div>
+    <div>
+      <h2 className="text-xl font-semibold">
+        {ORDER_STATUSES[currentIndex]?.label ?? "Received"}
+      </h2>
+      <p className="mt-0.5 text-sm text-muted-foreground">
+        {status === "delivered" ? "Your order has been delivered." : "Updating in real time."}
+      </p>
 
-      <ol className="mt-8 space-y-4">
+      <ol className="mt-6 space-y-5">
         {ORDER_STATUSES.map((step, i) => {
           const done = i < currentIndex;
           const active = i === currentIndex;
           return (
-            <li key={step.id} className="flex items-center gap-4">
-              <div
-                className={cn(
-                  "relative grid h-9 w-9 shrink-0 place-items-center rounded-full border-2 transition-colors",
-                  done && "border-foreground bg-foreground text-background",
-                  active && "border-foreground bg-background text-foreground",
-                  !done && !active && "border-border bg-background text-muted-foreground"
-                )}
-              >
-                {done ? (
-                  <Check className="h-4 w-4" />
-                ) : (
-                  <span className="text-xs font-semibold">{i + 1}</span>
-                )}
-                {active ? (
-                  <span className="absolute inset-0 -z-0 animate-ping rounded-full border-2 border-foreground/40" />
-                ) : null}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p
+            <li key={step.id} className="relative flex items-center gap-3">
+              <div className="flex flex-col items-center">
+                <div
                   className={cn(
-                    "text-sm font-semibold",
-                    !done && !active && "text-muted-foreground"
+                    "relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors",
+                    (done || active) ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground"
                   )}
                 >
-                  {step.label}
-                </p>
+                  {STEP_ICONS[step.id]}
+                  {active && status !== "delivered" && (
+                    <span className="absolute inset-0 animate-ping rounded-full bg-primary/20" />
+                  )}
+                </div>
               </div>
-              {active && status !== "delivered" ? (
-                <span className="text-xs tracking-[0.18em] text-primary">
-                  In progress
-                </span>
-              ) : null}
+              <p
+                className={cn(
+                  "text-sm font-semibold leading-none",
+                  done && "text-primary",
+                  active && "text-primary",
+                  !done && !active && "text-muted-foreground"
+                )}
+              >
+                {step.label}
+              </p>
             </li>
           );
         })}

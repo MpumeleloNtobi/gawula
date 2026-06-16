@@ -1,12 +1,18 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 
 type Prediction = { description: string; placeId: string };
 
 type PlacePrediction = {
   text: { text: string };
   placeId: string;
+};
+
+type PlaceInstance = {
+  fetchFields: (request: { fields: string[] }) => Promise<unknown>;
+  location?: { lat: () => number; lng: () => number } | null;
 };
 
 type PlacesLib = {
@@ -18,18 +24,17 @@ type PlacesLib = {
     }) => Promise<{ suggestions: { placePrediction: PlacePrediction | null }[] }>;
   };
   AutocompleteSessionToken: new () => unknown;
+  Place: new (options: { id: string }) => PlaceInstance;
 };
 
-let placesPromise: Promise<PlacesLib> | null = null;
+type MapsWindow = {
+  google?: { maps?: { importLibrary?: (name: string) => Promise<unknown> } };
+};
 
-function loadPlaces(apiKey: string): Promise<PlacesLib> {
-  if (typeof window === "undefined") return Promise.reject();
-  if (placesPromise) return placesPromise;
-  const w = window as unknown as {
-    google?: { maps?: { importLibrary?: (name: string) => Promise<unknown> } };
-  };
-  if (!w.google?.maps?.importLibrary) {
-    ((g: Record<string, unknown>) => {
+function ensureBootstrap(apiKey: string) {
+  const w = window as unknown as MapsWindow;
+  if (w.google?.maps?.importLibrary) return;
+  ((g: Record<string, unknown>) => {
       let h: Promise<void> | undefined;
       const c = "google";
       const l = "importLibrary";
@@ -65,11 +70,31 @@ function loadPlaces(apiKey: string): Promise<PlacesLib> {
         dl[l] = (f: string, ...n: unknown[]) =>
           r.add(f) && u().then(() => (dl[l] as (...x: unknown[]) => unknown)(f, ...n));
     })({ key: apiKey, v: "weekly" });
-  }
+}
+
+let placesPromise: Promise<PlacesLib> | null = null;
+
+function loadPlaces(apiKey: string): Promise<PlacesLib> {
+  if (typeof window === "undefined") return Promise.reject();
+  if (placesPromise) return placesPromise;
+  ensureBootstrap(apiKey);
+  const w = window as unknown as MapsWindow;
   placesPromise = w
     .google!.maps!.importLibrary!("places")
     .then((lib) => lib as PlacesLib);
   return placesPromise;
+}
+
+export async function fetchPlaceLocation(
+  apiKey: string,
+  placeId: string
+): Promise<{ lat: number; lng: number } | null> {
+  const lib = await loadPlaces(apiKey);
+  const place = new lib.Place({ id: placeId });
+  await place.fetchFields({ fields: ["location"] });
+  const loc = place.location;
+  if (!loc) return null;
+  return { lat: loc.lat(), lng: loc.lng() };
 }
 
 export function AddressAutocomplete({
@@ -78,18 +103,32 @@ export function AddressAutocomplete({
   onValueChange,
   onSelect,
   onBlur,
+  onKeyDownEnter,
+  placeholder,
   className,
+  containerClassName = "relative",
+  menuClassName = "absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-card py-1 text-foreground shadow-lg ring-1 ring-black/10",
+  portal = false,
+  anchorRef,
   invalid,
   describedby,
+  includedPrimaryTypes,
 }: {
   id: string;
   value: string;
   onValueChange: (value: string) => void;
-  onSelect?: (value: string) => void;
+  onSelect?: (value: string, placeId?: string) => void;
   onBlur?: (event: React.FocusEvent<HTMLInputElement>) => void;
+  onKeyDownEnter?: () => void;
+  placeholder?: string;
   className?: string;
+  containerClassName?: string;
+  menuClassName?: string;
+  portal?: boolean;
+  anchorRef?: React.RefObject<HTMLElement | null>;
   invalid?: boolean;
   describedby?: string;
+  includedPrimaryTypes?: string[];
 }) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
@@ -98,8 +137,34 @@ export function AddressAutocomplete({
   const [active, setActive] = React.useState(-1);
   const skipFetch = React.useRef(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const menuRef = React.useRef<HTMLUListElement>(null);
   const libRef = React.useRef<PlacesLib | null>(null);
   const tokenRef = React.useRef<unknown>(null);
+  const [menuRect, setMenuRect] = React.useState<{
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
+
+  React.useEffect(() => {
+    if (!portal || !open) {
+      setMenuRect(null);
+      return;
+    }
+    const anchor = anchorRef?.current ?? containerRef.current;
+    if (!anchor) return;
+    const update = () => {
+      const rect = anchor.getBoundingClientRect();
+      setMenuRect({ top: rect.bottom + 8, left: rect.left, width: rect.width });
+    };
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
+  }, [portal, open, anchorRef]);
 
   React.useEffect(() => {
     if (!apiKey) return;
@@ -135,6 +200,7 @@ export function AddressAutocomplete({
         input: query,
         includedRegionCodes: ["za"],
         sessionToken: tokenRef.current ?? undefined,
+        ...(includedPrimaryTypes ? { includedPrimaryTypes } : {}),
       })
         .then(({ suggestions: results }) => {
           if (cancelled) return;
@@ -157,23 +223,32 @@ export function AddressAutocomplete({
   React.useEffect(() => {
     if (!open) return;
     const onClick = (event: MouseEvent) => {
-      if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
+      const target = event.target as Node;
+      if (containerRef.current?.contains(target)) return;
+      if (menuRef.current?.contains(target)) return;
+      setOpen(false);
     };
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
   }, [open]);
 
-  const choose = (description: string) => {
+  const choose = (prediction: Prediction) => {
     skipFetch.current = true;
-    onValueChange(description);
-    onSelect?.(description);
+    onValueChange(prediction.description);
+    onSelect?.(prediction.description, prediction.placeId);
     setOpen(false);
     setSuggestions([]);
     if (libRef.current) tokenRef.current = new libRef.current.AutocompleteSessionToken();
   };
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!open || suggestions.length === 0) return;
+    if (!open || suggestions.length === 0) {
+      if (event.key === "Enter" && onKeyDownEnter) {
+        event.preventDefault();
+        onKeyDownEnter();
+      }
+      return;
+    }
     if (event.key === "ArrowDown") {
       event.preventDefault();
       setActive((i) => (i + 1) % suggestions.length);
@@ -182,14 +257,53 @@ export function AddressAutocomplete({
       setActive((i) => (i - 1 + suggestions.length) % suggestions.length);
     } else if (event.key === "Enter" && active >= 0) {
       event.preventDefault();
-      choose(suggestions[active].description);
+      choose(suggestions[active]);
+    } else if (event.key === "Enter" && onKeyDownEnter) {
+      event.preventDefault();
+      onKeyDownEnter();
     } else if (event.key === "Escape") {
       setOpen(false);
     }
   };
 
+  const menu =
+    open && suggestions.length > 0 ? (
+      <ul
+        ref={menuRef}
+        className={menuClassName}
+        style={
+          portal && menuRect
+            ? {
+                position: "fixed",
+                top: menuRect.top,
+                left: menuRect.left,
+                width: menuRect.width,
+              }
+            : undefined
+        }
+      >
+        {suggestions.map((s, i) => (
+          <li key={s.placeId}>
+            <button
+              type="button"
+              onMouseDown={(event) => {
+                event.preventDefault();
+                choose(s);
+              }}
+              onMouseEnter={() => setActive(i)}
+              className={`block w-full px-4 py-2 text-left text-sm text-foreground ${
+                i === active ? "bg-secondary" : "bg-transparent"
+              }`}
+            >
+              {s.description}
+            </button>
+          </li>
+        ))}
+      </ul>
+    ) : null;
+
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef} className={containerClassName}>
       <input
         id={id}
         value={value}
@@ -198,6 +312,7 @@ export function AddressAutocomplete({
         onKeyDown={onKeyDown}
         onBlur={onBlur}
         autoComplete="off"
+        placeholder={placeholder}
         role="combobox"
         aria-expanded={open}
         aria-autocomplete="list"
@@ -205,27 +320,11 @@ export function AddressAutocomplete({
         aria-describedby={describedby}
         className={className}
       />
-      {open && suggestions.length > 0 ? (
-        <ul className="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-card py-1 shadow-lg ring-1 ring-black/10">
-          {suggestions.map((s, i) => (
-            <li key={s.placeId}>
-              <button
-                type="button"
-                onMouseDown={(event) => {
-                  event.preventDefault();
-                  choose(s.description);
-                }}
-                onMouseEnter={() => setActive(i)}
-                className={`block w-full px-4 py-2 text-left text-sm ${
-                  i === active ? "bg-secondary" : "bg-transparent"
-                }`}
-              >
-                {s.description}
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+      {portal
+        ? menu && typeof document !== "undefined"
+          ? createPortal(menu, document.body)
+          : null
+        : menu}
     </div>
   );
 }

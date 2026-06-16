@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Check } from "lucide-react";
+import { LuCheck as Check } from "react-icons/lu";
 import { Button } from "@/components/ui/button";
 import {
   APPLICATION_STAGES,
@@ -95,7 +95,7 @@ export function RiderApplicationStatus() {
 
       {approved ? (
         <div className="mt-6 rounded-2xl border border-border bg-secondary/50 p-6 sm:p-8">
-          <p className="text-base font-semibold">You're approved to ride</p>
+          <p className="text-base font-semibold">You&apos;re approved to ride</p>
           <p className="mt-2 text-sm text-muted-foreground">
             Welcome to Gawula. Head to your rider portal to go online and start
             accepting trips.
@@ -112,7 +112,7 @@ export function RiderApplicationStatus() {
       ) : rejected ? (
         <div className="mt-6 rounded-2xl bg-secondary p-5">
           <p className="text-base font-semibold">
-            We couldn't approve your application
+            We couldn&apos;t approve your application
           </p>
           <p className="mt-2 text-sm text-muted-foreground">
             {live?.rejectionReason ||

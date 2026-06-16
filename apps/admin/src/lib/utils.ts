@@ -6,12 +6,10 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatPrice(cents: number) {
-  const formatted = new Intl.NumberFormat("en-ZA", {
-    style: "currency",
-    currency: "ZAR",
+  const number = new Intl.NumberFormat("en-ZA", {
     maximumFractionDigits: 0,
   }).format(cents / 100);
-  return formatted.replace(/\s+/g, "");
+  return `R${number.replace(/\s+/g, ",")}`;
 }
 
 export function uid() {

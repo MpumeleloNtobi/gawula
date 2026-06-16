@@ -1,7 +1,9 @@
 import {
+  ArrayNotEmpty,
   IsBoolean,
   IsEmail,
   IsIn,
+  IsArray,
   IsOptional,
   IsString,
   Matches,
@@ -31,5 +33,13 @@ export class CreateRiderApplicationDto {
 }
 
 export class RejectRiderApplicationDto {
+  @IsString() @MinLength(3) reason!: string;
+}
+
+export class BulkRiderApplicationIdsDto {
+  @IsArray() @ArrayNotEmpty() @IsString({ each: true }) ids!: string[];
+}
+
+export class BulkRejectRiderApplicationDto extends BulkRiderApplicationIdsDto {
   @IsString() @MinLength(3) reason!: string;
 }

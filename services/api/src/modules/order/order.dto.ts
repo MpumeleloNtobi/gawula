@@ -9,6 +9,7 @@ import {
   ValidateNested,
 } from "class-validator";
 import { Type } from "class-transformer";
+import type { SubOrderStatus } from "@foyer/shared";
 
 export class OrderModifierDto {
   @IsString() groupId!: string;
@@ -45,6 +46,43 @@ export class PlaceOrderDto {
 }
 
 export class UpdateSubOrderStatusDto {
-  @IsIn(["accepted", "preparing", "ready", "rejected"])
-  status!: "accepted" | "preparing" | "ready" | "rejected";
+  @IsIn(["accepted", "preparing", "ready", "collected", "rejected"])
+  status!: "accepted" | "preparing" | "ready" | "collected" | "rejected";
+  @IsOptional() @IsString() reason?: string;
+  @IsOptional() @IsString() code?: string;
+}
+
+export class SubOrderItemAdjustmentDto {
+  @IsString() orderItemId!: string;
+  @IsInt() @Min(0) fulfilledQty!: number;
+}
+
+export class AdjustSubOrderItemsDto {
+  @IsArray() @ValidateNested({ each: true }) @Type(() => SubOrderItemAdjustmentDto)
+  adjustments!: SubOrderItemAdjustmentDto[];
+  @IsOptional() @IsString() reason?: string;
+}
+
+export class AdminReasonDto {
+  @IsString() reason!: string;
+}
+
+export class AdminTransitionSubOrderDto {
+  @IsIn(["pending", "accepted", "preparing", "ready", "collected", "rejected", "cancelled"])
+  status!: SubOrderStatus;
+  @IsOptional() @IsString() reason?: string;
+}
+
+export class AdminReassignRiderDto {
+  @IsString() riderId!: string;
+  @IsString() reason!: string;
+}
+
+export class AdminRefundDto {
+  @IsInt() @Min(1) amountCents!: number;
+  @IsString() reason!: string;
+}
+
+export class AdminNoteDto {
+  @IsString() note!: string;
 }

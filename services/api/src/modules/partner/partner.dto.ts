@@ -1,7 +1,9 @@
 import {
+  ArrayNotEmpty,
   IsBoolean,
   IsEmail,
   IsIn,
+  IsArray,
   IsOptional,
   IsString,
   Matches,
@@ -47,5 +49,17 @@ export class SetPartnerStageDto {
 }
 
 export class RejectPartnerApplicationDto {
+  @IsString() @MinLength(3) reason!: string;
+}
+
+export class BulkPartnerApplicationIdsDto {
+  @IsArray() @ArrayNotEmpty() @IsString({ each: true }) ids!: string[];
+}
+
+export class BulkSetPartnerStageDto extends BulkPartnerApplicationIdsDto {
+  @IsIn(PARTNER_STAGE_FLOW) stage!: (typeof PARTNER_STAGE_FLOW)[number];
+}
+
+export class BulkRejectPartnerApplicationDto extends BulkPartnerApplicationIdsDto {
   @IsString() @MinLength(3) reason!: string;
 }

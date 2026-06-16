@@ -34,7 +34,7 @@ export function homePathForRole(role: PrincipalRole): string {
     case "rider":
       return "/rider";
     case "partner":
-      return "/partner";
+      return "/store";
     case "admin":
       return "/admin";
     default:

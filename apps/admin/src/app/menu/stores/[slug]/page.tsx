@@ -4,7 +4,7 @@ import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams, notFound } from "next/navigation";
-import { ChevronLeft, ChevronRight, MapPin, Minus, Plus } from "lucide-react";
+import { LuChevronLeft as ChevronLeft, LuChevronRight as ChevronRight, LuMapPin as MapPin, LuMinus as Minus, LuPlus as Plus } from "react-icons/lu";
 import { NearbyShopLogo } from "@/components/nearby-shop";
 import { getNearbyShopBySlug, shopSlug } from "@/components/nearby-shop-data";
 import { canAddBrandToCart, useCart } from "@/lib/cart-store";
@@ -40,7 +40,7 @@ export default function NearbyStorePage() {
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight">{shop.name}</h1>
           <p className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
-            <MapPin className="h-4 w-4 shrink-0" strokeWidth={2.25} />
+            <MapPin className="h-4 w-4 shrink-0" />
             {shop.area}
           </p>
           {shop.badge ? (
@@ -125,7 +125,7 @@ function CategoryCarousel({ slug, category, compatibility, onQuickAdd }: Categor
             disabled={!scroll.canScrollLeft}
             onClick={() => scrollByDirection("left")}
           >
-            <ChevronLeft className="h-4 w-4" strokeWidth={2.4} />
+            <ChevronLeft className="h-4 w-4" />
           </button>
           <button
             type="button"
@@ -134,14 +134,14 @@ function CategoryCarousel({ slug, category, compatibility, onQuickAdd }: Categor
             disabled={!scroll.canScrollRight}
             onClick={() => scrollByDirection("right")}
           >
-            <ChevronRight className="h-4 w-4" strokeWidth={2.4} />
+            <ChevronRight className="h-4 w-4" />
           </button>
           <Link
             href={href}
             aria-label={`Show all ${category.title}`}
             className="grid h-8 w-8 place-items-center rounded-full bg-secondary sm:hidden"
           >
-            <ChevronRight className="h-4 w-4" strokeWidth={2.4} />
+            <ChevronRight className="h-4 w-4" />
           </Link>
         </div>
       </div>
@@ -180,7 +180,7 @@ function ProductCard({ item, compatibility, onAdd }: ProductCardProps) {
               onClick={() => updateQuantity(line!.lineId, quantity - 1)}
               className="grid h-7 w-7 place-items-center rounded-full transition-colors hover:bg-secondary"
             >
-              <Minus className="h-4 w-4" strokeWidth={2.5} />
+              <Minus className="h-4 w-4" />
             </button>
             <span className="min-w-[1.25rem] text-center text-sm font-medium tabular-nums">{quantity}</span>
             <button
@@ -189,7 +189,7 @@ function ProductCard({ item, compatibility, onAdd }: ProductCardProps) {
               onClick={() => updateQuantity(line!.lineId, quantity + 1)}
               className="grid h-7 w-7 place-items-center rounded-full transition-colors hover:bg-secondary"
             >
-              <Plus className="h-4 w-4" strokeWidth={2.5} />
+              <Plus className="h-4 w-4" />
             </button>
           </div>
         ) : (
@@ -201,11 +201,11 @@ function ProductCard({ item, compatibility, onAdd }: ProductCardProps) {
             onClick={() => onAdd(item)}
             className="absolute bottom-2 right-2 grid h-9 w-9 place-items-center rounded-full border border-border bg-background text-foreground shadow-md transition-transform hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
           >
-            <Plus className="h-4 w-4" strokeWidth={2.5} />
+            <Plus className="h-4 w-4" />
           </button>
         )}
       </div>
-      <div className="mt-2 text-sm font-bold">{formatPrice(item.price)}</div>
+      <div className="mt-2 text-sm font-semibold">{formatPrice(item.price)}</div>
       <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">{item.name}</p>
     </article>
   );

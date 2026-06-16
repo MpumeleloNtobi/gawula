@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { MailWarning } from "lucide-react";
+import { LuMailWarning as MailWarning } from "react-icons/lu";
 import { useAuth } from "@/lib/auth-store";
 
 export function VerifyEmailBanner() {

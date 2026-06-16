@@ -2,24 +2,30 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { ChevronDown, Check } from "lucide-react";
-import { BRANDS, STORE_LOCATIONS } from "@/lib/mock-data";
+import { LuChevronDown as ChevronDown, LuCheck as Check } from "react-icons/lu";
+import { BRANDS, HUBS, STORE_LOCATIONS } from "@/lib/mock-data";
 import { buildShopClusters } from "@/components/nearby-shop-data";
+import { useCart } from "@/lib/cart-store";
 import { cn } from "@/lib/utils";
 
 const SHOP_CLUSTERS = buildShopClusters();
 
-const LOCATION_DISTANCE_KM: Record<string, number> = {
-  "mall-of-africa-food-court": 4.2,
-  "waterfall-corner": 3.1,
-  "the-zone-rosebank": 8.6,
-};
+const SERVICE_RADIUS_KM = 30;
 
-const TILES = STORE_LOCATIONS.map((location) => {
-  const restaurantCount = BRANDS.filter((b) => b.storeLocationId === location.id).length;
-  const distanceKm = LOCATION_DISTANCE_KM[location.id] ?? 0;
-  return { location, restaurantCount, distanceKm };
-}).sort((a, b) => a.distanceKm - b.distanceKm);
+function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+  const R = 6371;
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+  const lat1 = (a.lat * Math.PI) / 180;
+  const lat2 = (b.lat * Math.PI) / 180;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+const STORE_TILES = STORE_LOCATIONS.map((location) => ({
+  location,
+  restaurantCount: BRANDS.filter((b) => b.storeLocationId === location.id).length,
+}));
 
 type BundleType = "mall" | "complex" | "cluster";
 
@@ -33,6 +39,11 @@ export default function AllBundlesPage() {
   const [selectedTypes, setSelectedTypes] = React.useState<BundleType[]>([]);
   const [open, setOpen] = React.useState(false);
   const wrapperRef = React.useRef<HTMLDivElement>(null);
+  const hubId = useCart((s) => s.hub);
+  const coords = useCart((s) => s.coords);
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => setMounted(true), []);
 
   React.useEffect(() => {
     if (!open) return;
@@ -53,7 +64,23 @@ export default function AllBundlesPage() {
       current.includes(value) ? current.filter((item) => item !== value) : [...current, value],
     );
 
-  const visibleTiles = TILES.filter(
+  const origin = React.useMemo(() => {
+    const hubCoords = hubId ? HUBS.find((hub) => hub.id === hubId)?.coordinates ?? null : null;
+    return hubCoords ?? coords;
+  }, [hubId, coords]);
+
+  const tiles = React.useMemo(() => {
+    return STORE_TILES.map((tile) => {
+      let distanceKm: number | null = null;
+      if (mounted && origin) {
+        const d = haversineKm(origin, tile.location.coordinates);
+        if (d <= SERVICE_RADIUS_KM) distanceKm = d;
+      }
+      return { ...tile, distanceKm };
+    }).sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity));
+  }, [origin, mounted]);
+
+  const visibleTiles = tiles.filter(
     (tile) => !isActive || selectedTypes.includes(tile.location.type),
   );
   const showClusters = !isActive && SHOP_CLUSTERS.length > 0;
@@ -100,7 +127,7 @@ export default function AllBundlesPage() {
                       selected ? "border-foreground bg-foreground" : "border-muted-foreground/70",
                     )}
                   >
-                    {selected ? <Check className="h-3 w-3 text-background" strokeWidth={3} /> : null}
+                    {selected ? <Check className="h-3 w-3 text-background" /> : null}
                   </span>
                   <span>{option.label}</span>
                 </button>
@@ -132,7 +159,9 @@ export default function AllBundlesPage() {
                   {tile.restaurantCount} stores in this bundle
                 </p>
                 <p className="text-sm tabular-nums text-muted-foreground">
-                  {tile.distanceKm.toFixed(1)} km away
+                  {tile.distanceKm != null
+                    ? `${tile.distanceKm.toFixed(1)} km away`
+                    : tile.location.area}
                 </p>
               </div>
             </div>
@@ -152,6 +181,10 @@ export default function AllBundlesPage() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {SHOP_CLUSTERS.map((cluster) => {
               const total = cluster.members.length + 1;
+              const clusterDistance =
+                mounted && origin ? haversineKm(origin, cluster.anchor.coordinates) : null;
+              const showClusterDistance =
+                clusterDistance != null && clusterDistance <= SERVICE_RADIUS_KM;
               return (
                 <div key={cluster.id} className="flex flex-col gap-3">
                   <article
@@ -175,7 +208,9 @@ export default function AllBundlesPage() {
                   <div className="flex flex-col items-center gap-0.5 text-center">
                     <p className="text-sm font-medium text-foreground">{total} stores nearby</p>
                     <p className="text-sm tabular-nums text-muted-foreground">
-                      {cluster.radiusKm.toFixed(1)} km · {cluster.anchor.area}
+                      {showClusterDistance
+                        ? `${clusterDistance.toFixed(1)} km · ${cluster.anchor.area}`
+                        : cluster.anchor.area}
                     </p>
                   </div>
                 </div>

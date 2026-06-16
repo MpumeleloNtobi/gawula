@@ -1,4 +1,4 @@
-import { Injectable, Logger, ConflictException, NotFoundException, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger, ConflictException, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { PrismaService } from "../../infrastructure/prisma.module";
 import { MailService } from "../../infrastructure/mail.module";
 import { generateResetToken, hashResetToken } from "../identity/reset-token.util";
@@ -203,6 +203,53 @@ export class PartnerService {
       data: { stage: "rejected", rejectionReason: reason.trim(), reviewerId, decidedAt: new Date() },
     });
     return { id, stage: "rejected" as const };
+  }
+
+  async promoteFromWaitlist(id: string, reviewerId: string) {
+    const application = await this.prisma.partnerApplication.findUnique({ where: { id } });
+    if (!application) throw new NotFoundException("Application not found");
+    if (application.stage === "live" || application.stage === "rejected") {
+      throw new ConflictException("Only active applications can be promoted from the waitlist");
+    }
+    if (!application.waitlisted) {
+      throw new BadRequestException("Application is not waitlisted");
+    }
+    await this.prisma.partnerApplication.update({
+      where: { id },
+      data: { waitlisted: false, reviewerId },
+    });
+    return { id, waitlisted: false };
+  }
+
+  bulkSetStage(ids: string[], reviewerId: string, stage: (typeof PARTNER_STAGE_FLOW)[number]) {
+    return this.bulk(ids, (id) => this.setStage(id, reviewerId, stage));
+  }
+
+  bulkReject(ids: string[], reviewerId: string, reason: string) {
+    return this.bulk(ids, (id) => this.reject(id, reviewerId, reason));
+  }
+
+  bulkPromoteFromWaitlist(ids: string[], reviewerId: string) {
+    return this.bulk(ids, (id) => this.promoteFromWaitlist(id, reviewerId));
+  }
+
+  private async bulk<T extends Record<string, unknown>>(
+    ids: string[],
+    action: (id: string) => Promise<T>,
+  ) {
+    const results = [];
+    for (const id of [...new Set(ids)]) {
+      try {
+        results.push({ ok: true as const, ...(await action(id)) });
+      } catch (error) {
+        results.push({
+          id,
+          ok: false as const,
+          message: error instanceof Error ? error.message : "Action failed",
+        });
+      }
+    }
+    return { results };
   }
 
   private async sendVerificationEmail(applicationId: string, email: string, firstName: string) {

@@ -54,7 +54,7 @@ export class CatalogService {
   async getOutletMenu(outletId: string) {
     const outlet = await this.prisma.outlet.findUnique({
       where: { id: outletId },
-      include: { brand: true, items: { where: { available: true }, orderBy: { name: "asc" } } },
+      include: { brand: true, items: { where: { available: true, archivedAt: null }, orderBy: { name: "asc" } } },
     });
     if (!outlet) throw new NotFoundException(`Outlet ${outletId} not found`);
     return {

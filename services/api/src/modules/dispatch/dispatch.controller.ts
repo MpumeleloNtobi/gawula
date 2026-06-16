@@ -1,6 +1,6 @@
-import { Body, Controller, Get, HttpCode, Param, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, Param, Patch, Post, UseGuards } from "@nestjs/common";
 import { DispatchService } from "./dispatch.service";
-import { AvailabilityDto, ClaimTripDto, PickupDto } from "./dispatch.dto";
+import { AvailabilityDto, ClaimTripDto, PickupDto, UpdateProfileDto } from "./dispatch.dto";
 import { JwtAuthGuard, Roles, CurrentUser } from "../identity/jwt-auth.guard";
 import type { Principal } from "../identity/principal";
 
@@ -13,6 +13,11 @@ export class DispatchController {
   @Get("me")
   me(@CurrentUser() user: Principal) {
     return this.dispatch.me(user.id);
+  }
+
+  @Patch("me")
+  updateProfile(@CurrentUser() user: Principal, @Body() dto: UpdateProfileDto) {
+    return this.dispatch.updateProfile(user.id, dto);
   }
 
   @Post("availability")
@@ -29,6 +34,11 @@ export class DispatchController {
   @Get("trips/mine")
   mine(@CurrentUser() user: Principal) {
     return this.dispatch.myTrips(user.id);
+  }
+
+  @Get("trips/history")
+  history(@CurrentUser() user: Principal) {
+    return this.dispatch.history(user.id);
   }
 
   @Post("trips/claim")

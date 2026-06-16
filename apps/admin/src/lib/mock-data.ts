@@ -465,7 +465,7 @@ const NEARBY_CATALOG: Record<string, NearbyCategorySeed[]> = {
         { name: "Seed loaf", description: "Stone-baked loaf with sunflower and pumpkin seeds", price: 4290, image: PHOTO.bread },
         { name: "Butter croissants (4)", description: "All-butter croissants, baked fresh in store", price: 2150, image: PHOTO.croissant },
         { name: "Sourdough loaf", description: "Slow-proved sourdough with a crisp crust", price: 4790, image: PHOTO.bread },
-        { name: "Almond croissants (4)", description: "Filled with frangipane and toasted almonds", price: 3290, image: PHOTO.croissant },
+        { name: "Almond croissants", description: "Filled with frangipane and toasted almonds", price: 3290, image: PHOTO.croissant },
         { name: "Ciabatta rolls (6)", description: "Soft Italian-style rolls for sandwiches", price: 2790, image: PHOTO.bread },
         { name: "Banana bread loaf", description: "Moist banana loaf with a hint of cinnamon", price: 3590, image: PHOTO.bread },
       ],
@@ -722,7 +722,7 @@ const NEARBY_CATALOG: Record<string, NearbyCategorySeed[]> = {
       items: [
         { name: "Dark chocolate", description: "70% cocoa dark chocolate slab", price: 2990, image: PHOTO.chocolate },
         { name: "Milk chocolate slab", description: "Creamy milk chocolate slab", price: 2790, image: PHOTO.chocolate },
-        { name: "Almond croissants (4)", description: "Filled with frangipane and toasted almonds", price: 3290, image: PHOTO.croissant },
+        { name: "Almond croissants", description: "Filled with frangipane and toasted almonds", price: 3290, image: PHOTO.croissant },
         { name: "Banana bread loaf", description: "Moist banana loaf with a hint of cinnamon", price: 3590, image: PHOTO.bread },
         { name: "Caramel popcorn", description: "Sweet, crunchy caramel popcorn", price: 2690, image: PHOTO.popcorn },
         { name: "Chocolate croissants (4)", description: "Buttery croissants with chocolate batons", price: 3390, image: PHOTO.croissant },

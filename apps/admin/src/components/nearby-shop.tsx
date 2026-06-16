@@ -32,7 +32,7 @@ export function NearbyShopLogo({
         />
       ) : (
         <span
-          className={`${fontClass} font-bold`}
+          className={`${fontClass} font-semibold`}
           style={{ color: shop.logoColor }}
         >
           {shop.logoText}
