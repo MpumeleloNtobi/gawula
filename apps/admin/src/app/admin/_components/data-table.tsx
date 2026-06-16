@@ -52,7 +52,7 @@ export function DataTable<T>({
   initialSort,
   onVisibleRowsChange,
 }: {
-  rows: T[] | undefined;
+  rows: T[] | null | undefined;
   columns: DataTableColumn<T>[];
   getRowKey: (row: T) => string;
   minWidth?: string;
