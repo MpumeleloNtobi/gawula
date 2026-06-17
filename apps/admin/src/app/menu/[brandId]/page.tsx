@@ -8,7 +8,7 @@ import { LuClock as Clock, LuHeart as Heart, LuHeart as HeartFilled, LuMapPin as
 import { FloatingContactButton } from "@/components/floating-contact-button";
 import { Input } from "@/components/ui/input";
 import { canAddBrandToCart, useCart, type AddLineResult } from "@/lib/cart-store";
-import { BRANDS, MENU_ITEMS, categorySlug, getBrand, getBrandLocation, getDisplayTags, getMostLikedBadge, getNearbyStoreMenu, type MenuItem } from "@/lib/mock-data";
+import { BRANDS, MENU_ITEMS, categorySlug, getBrand, getBrandLocation, getMostLikedBadge, getNearbyStoreMenu, type MenuItem } from "@/lib/mock-data";
 import { cn, formatPrice } from "@/lib/utils";
 
 type BrandPageDetails = {
@@ -77,19 +77,19 @@ const DEFAULT_SECTIONS: MenuSectionConfig[] = [
   {
     id: "popular",
     title: "Popular",
-    description: "Customer favourites from this store.",
+    description: "",
     tagged: true,
   },
   {
     id: "mains",
     title: "Mains",
-    description: "The core menu, made for one or for sharing.",
+    description: "",
     terms: ["burger", "bowl", "ramen", "pizza", "chicken", "stir-fry"],
   },
   {
     id: "sides",
     title: "Sides and extras",
-    description: "Add-ons, snacks, and sweet finishes.",
+    description: "",
     terms: ["fries", "rings", "gyoza", "edamame", "focaccia", "shake", "tiramisu", "soup"],
   },
 ];
@@ -99,19 +99,19 @@ const BRAND_SECTIONS: Record<string, MenuSectionConfig[]> = {
     {
       id: "popular",
       title: "Popular",
-      description: "Top-ranked Harvest favourite right now.",
+      description: "",
       itemIds: ["harvest-mediterranean"],
     },
     {
       id: "bowls",
       title: "Bowls",
-      description: "Grain bowls with bright vegetables, seafood, and plant-based favourites.",
+      description: "",
       itemIds: ["harvest-poke", "harvest-buddha"],
     },
     {
       id: "greens-soup",
       title: "Greens and soup",
-      description: "Crisp salads, cold-pressed juice, and slow-roasted soup.",
+      description: "",
       itemIds: ["harvest-caesar", "harvest-greens", "harvest-soup"],
     },
   ],
@@ -268,10 +268,10 @@ export default function BrandMenuPage() {
 
   return (
     <div className="bg-background pb-28">
-      <section className="pt-4 sm:pt-6">
-        <div className="container">
+      <section className="sm:pt-6">
+        <div className="sm:container">
           <div className="relative">
-            <div className="relative h-56 overflow-hidden rounded-lg bg-secondary sm:h-72 lg:h-[340px]">
+            <div className="relative h-48 overflow-hidden bg-secondary sm:h-72 sm:rounded-lg lg:h-[340px]">
               <Image
                 src={brand.cover}
                 alt={brand.name}
@@ -282,7 +282,7 @@ export default function BrandMenuPage() {
               />
             </div>
             <div
-              className="absolute bottom-0 left-7 grid h-14 w-14 translate-y-1/2 place-items-center rounded-lg text-lg font-semibold text-white shadow-sm ring-4 ring-background sm:left-9 sm:h-16 sm:w-16 sm:text-xl"
+              className="absolute bottom-0 left-5 grid h-14 w-14 translate-y-1/2 place-items-center rounded-lg text-lg font-semibold text-white shadow-sm ring-4 ring-background sm:left-9 sm:h-16 sm:w-16 sm:text-xl"
               style={{ backgroundColor: brand.logoColor }}
               aria-hidden
             >
@@ -300,37 +300,34 @@ export default function BrandMenuPage() {
               <p className="mt-2 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
                 {brand.tagline}
               </p>
-              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium text-muted-foreground">
+              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
                 <span className="inline-flex items-center gap-1.5 font-semibold text-foreground">
                   <Star className="h-4 w-4" />
                   {details.rating.toFixed(1)}
-                  <span className="font-medium text-muted-foreground">
+                  <span className="font-normal text-muted-foreground">
                     ({formatRatingCount(details.ratingCount)})
                   </span>
                 </span>
-                {details.labels.map((label) => (
-                  <React.Fragment key={label}>
-                    <span className="h-1 w-1 rounded-full bg-muted-foreground/50" aria-hidden />
-                    <span>{label}</span>
-                  </React.Fragment>
-                ))}
+                <span>{details.labels.join(", ")}</span>
               </div>
-              <p className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
-                <MapPin className="h-4 w-4 shrink-0" />
-                {location
-                  ? `${location.name}, ${location.area} (${location.proximityLabel})`
-                  : details.area}
-              </p>
-              <div className="mt-5 flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#116B35]/10 px-3 py-1 text-[13px] font-semibold text-[#116B35]">
-                  <Clock className="h-3.5 w-3.5" />
+              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                <span className="inline-flex items-center gap-1.5">
+                  <MapPin className="h-4 w-4 shrink-0" />
+                  {location
+                    ? `${location.name}, ${location.area} (${location.proximityLabel})`
+                    : details.area}
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <Clock className="h-4 w-4 shrink-0" />
                   {details.opening}
                 </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#e11900]/10 px-3 py-1 text-[13px] font-semibold text-[#e11900]">
-                  <Tag className="h-3.5 w-3.5" />
-                  {details.offer}
-                </span>
               </div>
+              {details.offer ? (
+                <p className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-foreground">
+                  <Tag className="h-4 w-4 shrink-0" />
+                  {details.offer}
+                </p>
+              ) : null}
             </div>
             <button
               type="button"
@@ -400,7 +397,7 @@ export default function BrandMenuPage() {
         </section>
       ) : null}
 
-      <section className="sticky top-16 z-20 bg-background/95 shadow-[0_1px_0_rgba(0,0,0,0.07)] backdrop-blur">
+      <section className="sticky top-0 z-20 bg-background/95 shadow-[0_1px_0_rgba(0,0,0,0.07)] backdrop-blur sm:top-16">
         <div className="container">
           <div className="grid gap-3 py-3 lg:grid-cols-[minmax(260px,360px)_1fr] lg:items-center">
             <div className="relative w-full lg:max-w-sm">
@@ -433,25 +430,20 @@ export default function BrandMenuPage() {
 
       <section className="container py-7">
         {visibleItemCount === 0 ? (
-          <div className="rounded-lg bg-card p-10 text-center text-sm text-muted-foreground">
+          <div className="py-10 text-center text-sm text-muted-foreground">
             No dishes match your search.
           </div>
         ) : (
           <div className="grid gap-10">
             {menuSections.map((section) => (
-              <section key={section.id} id={section.id} className="scroll-mt-36">
-                <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-                  <div>
-                    <h2 className="text-2xl font-semibold">{section.title}</h2>
-                    {section.description ? (
-                      <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{section.description}</p>
-                    ) : null}
-                  </div>
-                  <span className="text-sm font-semibold text-muted-foreground">
-                    {section.items.length} {section.items.length === 1 ? "item" : "items"}
-                  </span>
+              <section key={section.id} id={section.id} className="scroll-mt-24 sm:scroll-mt-36">
+                <div className="mb-4">
+                  <h2 className="text-xl font-semibold">{section.title}</h2>
+                  {section.description ? (
+                    <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{section.description}</p>
+                  ) : null}
                 </div>
-                <div className="grid gap-3 lg:grid-cols-2">
+                <div className="grid gap-6 lg:grid-cols-2 lg:gap-x-8">
                   {section.items.map((item) => (
                     <MenuItemTile
                       key={item.id}
@@ -489,34 +481,26 @@ function MenuItemTile({
 }) {
   const requiresModifiers = item.modifiers?.some((group) => group.required);
   const mostLikedBadge = getMostLikedBadge(item);
-  const displayTags = getDisplayTags(item);
 
   return (
-    <article className="grid gap-4 rounded-lg bg-card p-4 transition-colors hover:bg-secondary/40 sm:grid-cols-[minmax(0,1fr)_136px] sm:p-5">
+    <article className="grid grid-cols-[minmax(0,1fr)_104px] gap-4 sm:grid-cols-[minmax(0,1fr)_136px]">
       <Link href={`/menu/item/${item.id}`} className="flex min-w-0 flex-col">
-        <div className="flex flex-wrap items-center gap-2">
-          {mostLikedBadge ? (
-            <span className="text-xs font-semibold text-[#116B35]">
-              {mostLikedBadge}
-            </span>
-          ) : null}
-          {displayTags.map((tag) => (
-            <span key={tag} className="text-xs font-semibold text-muted-foreground">
-              {tag}
-            </span>
-          ))}
-        </div>
-        <h3 className="mt-3 text-lg font-semibold leading-tight">{item.name}</h3>
-        <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground sm:min-h-12">{item.description}</p>
-        <div className="mt-auto pt-4 text-base font-semibold">{formatPrice(item.price)}</div>
+        {mostLikedBadge ? (
+          <span className="mb-2 text-xs font-semibold text-[#116B35]">
+            {mostLikedBadge}
+          </span>
+        ) : null}
+        <h3 className="text-base font-semibold leading-tight sm:text-lg">{item.name}</h3>
+        <p className="mt-1.5 line-clamp-2 text-sm leading-6 text-muted-foreground sm:mt-2 sm:min-h-12">{item.description}</p>
+        <div className="mt-auto pt-3 text-base font-semibold sm:pt-4">{formatPrice(item.price)}</div>
       </Link>
-      <div className="relative min-h-[148px] overflow-hidden rounded-md bg-secondary sm:min-h-full">
+      <div className="relative aspect-square overflow-hidden rounded-md bg-secondary sm:aspect-auto sm:min-h-full">
         <Link href={`/menu/item/${item.id}`} aria-label={`View ${item.name}`} className="block h-full">
           <Image
             src={item.image}
             alt={item.name}
             fill
-            sizes="(min-width: 1024px) 136px, 100vw"
+            sizes="(min-width: 1024px) 136px, 104px"
             className="object-cover"
           />
         </Link>
@@ -524,16 +508,16 @@ function MenuItemTile({
           <Link
             href={`/menu/item/${item.id}`}
             aria-label={`Customise ${item.name}`}
-            className="absolute bottom-3 right-3 grid h-10 w-10 place-items-center rounded-full bg-background text-foreground shadow-sm transition-transform hover:scale-105"
+            className="absolute bottom-2 right-2 grid h-9 w-9 place-items-center rounded-full bg-background text-foreground shadow-sm transition-transform hover:scale-105 sm:bottom-3 sm:right-3 sm:h-10 sm:w-10"
           >
             <Plus className="h-5 w-5" />
           </Link>
         ) : qty > 0 ? (
-          <div className="absolute bottom-3 right-3 flex items-center overflow-hidden rounded-full bg-background text-foreground shadow-sm">
+          <div className="absolute bottom-2 right-2 flex items-center overflow-hidden rounded-full bg-background text-foreground shadow-sm sm:bottom-3 sm:right-3">
             <button
               type="button"
               aria-label="Remove one"
-              className="grid h-10 w-10 place-items-center hover:opacity-80"
+              className="grid h-9 w-9 place-items-center hover:opacity-80 sm:h-10 sm:w-10"
               onClick={() => onDecrement(item)}
             >
               <Minus className="h-4 w-4" />
@@ -543,7 +527,7 @@ function MenuItemTile({
               type="button"
               aria-label="Add one more"
               disabled={!compatibility.ok}
-              className="grid h-10 w-10 place-items-center hover:opacity-80 disabled:opacity-40"
+              className="grid h-9 w-9 place-items-center hover:opacity-80 disabled:opacity-40 sm:h-10 sm:w-10"
               onClick={() => onQuickAdd(item)}
             >
               <Plus className="h-4 w-4" />
@@ -555,7 +539,7 @@ function MenuItemTile({
             aria-label={`Add ${item.name} to cart`}
             title={compatibility.ok ? undefined : compatibility.reason}
             disabled={!compatibility.ok}
-            className="absolute bottom-3 right-3 grid h-10 w-10 place-items-center rounded-full bg-background text-foreground shadow-sm transition-transform hover:scale-105 disabled:opacity-40"
+            className="absolute bottom-2 right-2 grid h-9 w-9 place-items-center rounded-full bg-background text-foreground shadow-sm transition-transform hover:scale-105 disabled:opacity-40 sm:bottom-3 sm:right-3 sm:h-10 sm:w-10"
             onClick={() => onQuickAdd(item)}
           >
             <Plus className="h-5 w-5" />

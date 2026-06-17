@@ -10,7 +10,10 @@ const HIDDEN_PREFIXES = [
   "/rider-demo",
   "/admin",
   "/store",
-  "/store",
+  "/menu",
+  "/cart",
+  "/checkout",
+  "/orders",
 ];
 
 export function SiteFooter() {

@@ -145,6 +145,11 @@ export function SiteHeader() {
     "/store",
     "/rider-demo",
   ].some((r) => pathname === r || pathname.startsWith(`${r}/`));
+  const isBrandStorePage =
+    pathname.startsWith("/menu/") &&
+    !pathname.startsWith("/menu/bundles") &&
+    !pathname.startsWith("/menu/stores");
+  const isCartPage = pathname.startsWith("/cart");
   const usesCompactNav = isHome || isOrderingFlow || isAuthFlow;
 
   const [navMenuOpen, setNavMenuOpen] = React.useState(false);
@@ -517,6 +522,7 @@ export function SiteHeader() {
         className={cn(
           "fixed inset-x-0 top-0 z-40 text-foreground transition-colors",
           isHome && !homeHeroOutOfSight ? "bg-transparent" : "bg-background",
+          isBrandStorePage && "hidden sm:block",
         )}
       >
       <div
@@ -556,6 +562,7 @@ export function SiteHeader() {
               className={cn(
                 "shrink-0 text-xl font-semibold tracking-tight",
                 isHome && !homeHeroOutOfSight ? "text-white" : "text-primary",
+                isCartPage && "hidden",
               )}
             >
               Gawula
@@ -1082,7 +1089,15 @@ export function SiteHeader() {
           </div>
         </nav>
       ) : null}
-      {isHome ? null : <div aria-hidden className={usesCompactNav ? "h-16" : "h-20"} />}
+      {isHome ? null : (
+        <div
+          aria-hidden
+          className={cn(
+            usesCompactNav ? "h-16" : "h-20",
+            isBrandStorePage && "hidden sm:block",
+          )}
+        />
+      )}
     </>
   );
 }

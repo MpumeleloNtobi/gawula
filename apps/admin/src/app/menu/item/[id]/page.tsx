@@ -6,7 +6,7 @@ import Image from "next/image";
 import { LuMinus as Minus, LuPlus as Plus } from "react-icons/lu";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { getDisplayTags, getItem, getMostLikedBadge } from "@/lib/mock-data";
+import { getItem, getMostLikedBadge } from "@/lib/mock-data";
 import { canAddItemToCart, useCart } from "@/lib/cart-store";
 import { formatPrice } from "@/lib/utils";
 
@@ -22,7 +22,6 @@ export default function ItemPage() {
   const lines = useCart((s) => s.lines);
   const setDrawerOpen = useCart((s) => s.setDrawerOpen);
   const mostLikedBadge = getMostLikedBadge(item);
-  const displayTags = getDisplayTags(item);
   const compatibility = canAddItemToCart(lines, item.id);
   const compatibilityNotice = !compatibility.ok
     ? compatibility.reason
@@ -111,20 +110,15 @@ export default function ItemPage() {
         <div className="pb-4">
           <section>
             <div>
-              <h1 className="text-3xl font-semibold leading-tight sm:text-4xl">{item.name}</h1>
+              <h1 className="text-2xl font-semibold leading-tight sm:text-3xl">{item.name}</h1>
               <div className="mt-2 text-lg font-semibold">{formatPrice(item.price)}</div>
               <p className="mt-3 text-base leading-7 text-muted-foreground">{item.description}</p>
             </div>
-            {mostLikedBadge || displayTags.length ? (
-              <div className="mt-4 flex flex-wrap gap-3 text-sm font-semibold text-muted-foreground">
-                {mostLikedBadge ? (
-                  <span className="text-xs font-semibold text-[#116B35]">
-                    {mostLikedBadge}
-                  </span>
-                ) : null}
-                {displayTags.map((tag) => (
-                  <span key={tag}>{tag}</span>
-                ))}
+            {mostLikedBadge ? (
+              <div className="mt-4">
+                <span className="text-xs font-semibold text-[#116B35]">
+                  {mostLikedBadge}
+                </span>
               </div>
             ) : null}
           </section>
@@ -135,21 +129,19 @@ export default function ItemPage() {
                 const single = group.required;
                 return (
                   <section key={group.id}>
-                    <div className="mb-3 flex items-end justify-between gap-4">
-                      <div>
-                        <h2 className="text-xl font-semibold">Choose {group.name.toLowerCase()}</h2>
-                        <p className="mt-1 text-sm font-semibold text-muted-foreground">
-                          {group.required ? "Required" : "Optional"}
-                        </p>
-                      </div>
+                    <div className="mb-2">
+                      <h2 className="text-lg font-semibold">Choose {group.name.toLowerCase()}</h2>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {group.required ? "Required" : "Optional"}
+                      </p>
                     </div>
-                    <div className="overflow-hidden rounded-lg bg-card">
+                    <div className="-mx-1">
                       {group.options.map((opt) => {
                         const checked = (selection[group.id] ?? []).includes(opt.id);
                         return (
                           <label
                             key={opt.id}
-                            className="flex cursor-pointer items-center justify-between gap-4 px-4 py-4 text-sm transition-colors hover:bg-secondary/40"
+                            className="flex cursor-pointer items-center justify-between gap-4 rounded-md px-1 py-3 text-sm transition-colors hover:bg-secondary/40"
                           >
                             <div className="flex items-center gap-3">
                               <input
@@ -175,7 +167,7 @@ export default function ItemPage() {
           ) : null}
 
           <section className="mt-8">
-            <h2 className="text-xl font-semibold">Special instructions</h2>
+            <h2 className="text-lg font-semibold">Special instructions</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Allergies, preferences, or anything the kitchen should know.
             </p>

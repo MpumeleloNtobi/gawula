@@ -46,7 +46,7 @@ export default function OrderPage() {
   return (
     <div className="container max-w-5xl pt-8 pb-28 md:py-12">
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold">Order #{order.id}</h1>
+        <h1 className="text-2xl font-semibold sm:text-3xl">Order #{order.id}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Placed{" "}
           {created.toLocaleString("en-ZA", {

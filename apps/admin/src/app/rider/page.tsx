@@ -121,7 +121,7 @@ export default function RiderDashboardPage() {
           className="flex items-center justify-between gap-3 py-4 transition-opacity hover:opacity-70"
         >
           <div className="flex flex-col gap-0.5">
-            <p className="text-3xl font-semibold tabular-nums">{mine?.length ?? 0}</p>
+            <p className="text-2xl font-semibold tabular-nums sm:text-3xl">{mine?.length ?? 0}</p>
             <p className="text-sm font-semibold text-muted-foreground">Active trips</p>
           </div>
           <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
@@ -131,7 +131,7 @@ export default function RiderDashboardPage() {
           className="flex items-center justify-between gap-3 py-4 transition-opacity hover:opacity-70"
         >
           <div className="flex flex-col gap-0.5">
-            <p className="text-3xl font-semibold tabular-nums">{available?.length ?? 0}</p>
+            <p className="text-2xl font-semibold tabular-nums sm:text-3xl">{available?.length ?? 0}</p>
             <p className="text-sm font-semibold text-muted-foreground">Available now</p>
           </div>
           <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />

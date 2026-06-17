@@ -58,8 +58,20 @@ a deeper audit of a screen, run the `ui-ux-reviewer` agent.
   states are clear. Signal hover with colour/opacity, never an added underline.
 - Keep perceived performance high: optimistic updates and skeletons over spinners
   where it fits; debounce expensive work.
+- Reserve space for content that loads or changes (fixed image ratios,
+  `min-h`/`min-w` on cells whose copy varies) so nothing shifts as it fills in.
+  No layout jumps.
 - Motion has a purpose (orient, confirm, direct attention). Skip ambient/
   decorative animation. Keep durations short.
+
+## Lists and selectable options
+
+- Render lists (menu items, modifier options, settings rows) as flat rows
+  separated by spacing, not stacked on white `bg-card` panels or boxed in
+  borders. Quiet beats decorated.
+- Selectable options use a real `<label>` wrapping a native `radio`/`checkbox`;
+  signal hover with a subtle tint (`hover:bg-secondary/40`), never a border or
+  white fill. Don't double-signal selection (see Gawula specifics).
 
 ## Responsive
 
@@ -67,6 +79,10 @@ a deeper audit of a screen, run the `ui-ux-reviewer` agent.
 - Fluid, content-driven breakpoints; no horizontal scroll; no fixed pixel widths
   that break on narrow screens.
 - Verify the layout, tap targets, and nav at mobile widths, not just desktop.
+- Sticky/fixed bottom action bars (cart, add to cart, checkout) pad for the
+  device safe area (`pb-[calc(env(safe-area-inset-bottom)_+_...)]`) and must not
+  overlap or be overlapped by the mobile bottom nav. Account for both when
+  setting page bottom padding and sticky offsets.
 
 ## Forms
 

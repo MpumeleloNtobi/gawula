@@ -68,7 +68,7 @@ export default function RiderEarningsPage() {
       </div>
 
       <section className="mt-8 rounded-2xl">
-        <p className="text-4xl font-semibold">{formatPrice(current.earnings)}</p>
+        <p className="text-3xl font-semibold sm:text-4xl">{formatPrice(current.earnings)}</p>
         <p className="mt-1 text-sm text-muted-foreground">
           {current.count === 1 ? "1 delivery completed" : `${current.count} deliveries completed`}
         </p>

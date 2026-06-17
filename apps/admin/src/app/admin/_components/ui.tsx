@@ -139,7 +139,7 @@ export function Stat({
 }) {
   return (
     <div>
-      <p className="text-3xl font-semibold tabular-nums">{value}</p>
+      <p className="text-2xl font-semibold tabular-nums sm:text-3xl">{value}</p>
       <div className="mt-0.5 flex items-center gap-1.5">
         <span className="text-sm font-semibold text-muted-foreground">{label}</span>
         {tooltip ? (

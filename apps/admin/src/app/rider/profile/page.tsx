@@ -172,7 +172,7 @@ export default function RiderProfilePage() {
   return (
     <div className="container pb-24 pt-6 md:py-10">
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-3xl font-semibold tracking-tight">Profile</h1>
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Profile</h1>
         {me && !editing && (
           <Button variant="secondary" size="sm" onClick={() => setEditing(true)}>
             Edit
