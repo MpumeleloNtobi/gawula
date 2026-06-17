@@ -3,7 +3,7 @@
 import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { LuCheck as Check, LuChevronDown as ChevronDown, LuChevronLeft as ChevronLeft, LuChevronRight as ChevronRight, LuCoffee as Coffee, LuFlame as Flame, LuHeart as Heart, LuHeart as HeartFilled, LuMapPin as MapPin, LuSearch as Search, LuStar as Star, LuStar as StarOutline, LuTag as Tag, LuUtensilsCrossed as UtensilsCrossed, LuX as X } from "react-icons/lu";
+import { LuCheck as Check, LuChevronDown as ChevronDown, LuChevronLeft as ChevronLeft, LuChevronRight as ChevronRight, LuCoffee as Coffee, LuFlame as Flame, LuHeart as Heart, LuHeart as HeartFilled, LuMapPin as MapPin, LuMoon as Moon, LuSearch as Search, LuStar as Star, LuStar as StarOutline, LuTag as Tag, LuUtensilsCrossed as UtensilsCrossed, LuX as X } from "react-icons/lu";
 import { LuBeef as Beef, LuCakeSlice as CakeSlice, LuCookingPot as CookingPot, LuCupSoda as CupSoda, LuDrumstick as Drumstick, LuFish as Fish, LuSandwich as Hamburger, LuLeaf as Leaf, LuMedal as Medal, LuMilk as Milk, LuPizza as Pizza, LuSalad as Salad, LuSoup as Soup, LuSprout as Sprout, LuUtensils as Utensils, LuWheat as Wheat } from "react-icons/lu";
 import type { IconType } from "react-icons";
 import { FloatingContactButton } from "@/components/floating-contact-button";
@@ -112,6 +112,7 @@ type RestaurantResult = {
   etaMinutes: [number, number];
   offer?: string;
   pickup?: boolean;
+  closed?: boolean;
   distanceKm?: number;
 };
 
@@ -187,6 +188,7 @@ const RESTAURANT_RESULTS: RestaurantResult[] = [
     etaMinutes: [35, 50],
     offer: "Free item (spend R 200)",
     pickup: true,
+    closed: true,
     distanceKm: 18.5,
   },
   {
@@ -1753,8 +1755,9 @@ export default function MenuPage() {
             const logo = getRestaurantLogo(restaurant);
             const addCost = addCostByRestaurant.get(restaurant.id);
             const location = getBrandLocation(restaurant.routeBrandId);
+            const closed = restaurant.closed ?? false;
             let chip: { label: string; tone: "in" | "free" | "small" | "medium" | "far" } | null = null;
-            if (addCost) {
+            if (addCost && !closed) {
               if (addCost.alreadyIn) {
                 chip = { label: "Already in cart", tone: "in" };
               } else if (addCost.delta <= 0) {
@@ -1772,34 +1775,52 @@ export default function MenuPage() {
             }
             return (
               <div key={restaurant.id} className="group">
-                <Link href={`/menu/${restaurant.routeBrandId}`} className="block">
+                <Link
+                  href={`/menu/${restaurant.routeBrandId}`}
+                  className={cn("block", closed && "pointer-events-none")}
+                  aria-disabled={closed || undefined}
+                  tabIndex={closed ? -1 : undefined}
+                >
                   <div className="relative aspect-[2/1] overflow-hidden rounded-lg bg-secondary">
                     <Image
                       src={getRestaurantCover(restaurant.routeBrandId)}
                       alt={restaurant.name}
                       fill
                       sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-                      className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                      className={cn(
+                        "object-cover transition-transform duration-300 group-hover:scale-[1.03]",
+                        closed && "grayscale group-hover:scale-100",
+                      )}
                     />
-                    {restaurant.pickup ? (
+                    {closed ? (
+                      <>
+                        <span className="absolute inset-0 bg-background/55" aria-hidden />
+                        <span className="absolute left-1/2 top-1/2 inline-flex -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 rounded-full bg-background px-3 py-1.5 text-sm font-semibold text-foreground shadow-sm">
+                          <Moon className="h-4 w-4" />
+                          Closed
+                        </span>
+                      </>
+                    ) : restaurant.pickup ? (
                       <span className="absolute left-1/2 top-1/2 inline-flex -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 rounded-full bg-background px-3 py-1.5 text-sm font-semibold text-foreground shadow-sm">
                         <WalkingPickupIcon className="h-4 w-4" />
                         Pick it up
                       </span>
                     ) : null}
-                    {restaurant.offer ? (
+                    {restaurant.offer && !closed ? (
                       <span className="absolute left-3 top-3 max-w-[calc(100%-1.5rem)] rounded bg-[#e11900] px-2.5 py-1 text-xs font-normal text-white shadow-sm">
                         {restaurant.offer}
                       </span>
                     ) : null}
                     </div>
                   </Link>
-                  <div className="relative pt-3 pr-8">
+                  <div className={cn("relative pt-3 pr-8", closed && "opacity-60")}>
                     <div className="flex items-start gap-3">
                       <Link
                         href={`/menu/${restaurant.routeBrandId}`}
-                        className="shrink-0"
+                        className={cn("shrink-0", closed && "pointer-events-none")}
                         aria-label={`${restaurant.name} menu`}
+                        aria-disabled={closed || undefined}
+                        tabIndex={closed ? -1 : undefined}
                       >
                         <StoreLogo
                           name={restaurant.name}
@@ -1809,7 +1830,12 @@ export default function MenuPage() {
                           className="h-10 w-10"
                         />
                       </Link>
-                      <Link href={`/menu/${restaurant.routeBrandId}`} className="block min-w-0 flex-1">
+                      <Link
+                        href={`/menu/${restaurant.routeBrandId}`}
+                        className={cn("block min-w-0 flex-1", closed && "pointer-events-none")}
+                        aria-disabled={closed || undefined}
+                        tabIndex={closed ? -1 : undefined}
+                      >
                         <h3 className="text-base font-semibold leading-tight sm:text-lg">{restaurant.name}</h3>
                         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
                           <span className="inline-flex items-center gap-1 font-semibold text-foreground">
@@ -1868,7 +1894,12 @@ export default function MenuPage() {
                   {restaurant.distanceKm ? (
                     <Link
                       href={`/menu/${restaurant.routeBrandId}`}
-                      className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 pl-[3.25rem] text-sm text-muted-foreground"
+                      className={cn(
+                        "mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 pl-[3.25rem] text-sm text-muted-foreground",
+                        closed && "pointer-events-none opacity-60",
+                      )}
+                      aria-disabled={closed || undefined}
+                      tabIndex={closed ? -1 : undefined}
                     >
                       <span>{formatDistance(restaurant.distanceKm)}</span>
                     </Link>

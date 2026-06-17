@@ -3,18 +3,16 @@
 import { useId, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { LuMinus as Minus, LuPlus as Plus, LuTrash2 as Trash2, LuChevronDown as ChevronDown, LuBike as Bike } from "react-icons/lu";
+import { LuMinus as Minus, LuPlus as Plus, LuTrash2 as Trash2, LuChevronDown as ChevronDown } from "react-icons/lu";
 import { Button } from "@/components/ui/button";
+import { StoreLogo } from "@/components/store-logo";
 import { useCart, cartTotals, linesByBrand, deliveryQuoteForBrandIds } from "@/lib/cart-store";
 import { BRANDS, HUBS, getItem } from "@/lib/mock-data";
 import { formatPrice } from "@/lib/utils";
 
 export default function CartPage() {
-  const router = useRouter();
   const lines = useCart((s) => s.lines);
   const hubId = useCart((s) => s.hub);
-  const address = useCart((s) => s.address);
   const updateQuantity = useCart((s) => s.updateQuantity);
   const clear = useCart((s) => s.clear);
   const hydrated = useCart((s) => s.hydrated);
@@ -23,7 +21,6 @@ export default function CartPage() {
   const totals = cartTotals(lines, hub ?? null);
   const grouped = linesByBrand(lines);
   const storeCount = grouped.size;
-  const deliveryLabel = address ?? hub?.name;
 
   const brandIdsInOrder = Array.from(grouped.keys());
   const separateDeliveryTotal =
@@ -52,17 +49,8 @@ export default function CartPage() {
 
   return (
     <div className="container max-w-6xl pb-28 pt-6 md:py-10">
-      <div className="mb-8 flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-semibold sm:text-3xl">Cart</h1>
-          <p className="mt-1.5 flex items-start gap-1.5 text-sm text-muted-foreground">
-            <Bike className="mt-0.5 h-4 w-4 shrink-0" />
-            <span className="min-w-0">
-              {storeCount > 1 ? `One delivery from ${storeCount} stores` : "One delivery"}
-              {deliveryLabel ? ` to ${deliveryLabel}` : ""}
-            </span>
-          </p>
-        </div>
+      <div className="mb-6 flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-semibold sm:text-3xl">Cart</h1>
         {confirmClear ? (
           <div className="flex shrink-0 items-center gap-3 text-sm" role="alertdialog" aria-label="Clear cart?">
             <button
@@ -106,6 +94,8 @@ export default function CartPage() {
               <StoreAccordion
                 key={brandId}
                 displayName={displayName}
+                logoColor={brand.logoColor}
+                logoUrl={brand.logoUrl}
                 brandItemCount={brandItemCount}
                 brandLines={brandLines}
                 updateQuantity={updateQuantity}
@@ -115,7 +105,7 @@ export default function CartPage() {
         </div>
 
         <aside className="lg:sticky lg:top-24 lg:self-start">
-          <div className="rounded-lg bg-secondary p-5">
+          <div>
             <h2 className="text-base font-semibold">Order summary</h2>
             <dl className="mt-4 space-y-3 text-sm">
               <div className="flex justify-between">
@@ -132,9 +122,9 @@ export default function CartPage() {
                 <dt className="text-muted-foreground">Service fee</dt>
                 <dd className="font-semibold">{formatPrice(totals.serviceFee)}</dd>
               </div>
-              <div className="mt-5 flex items-baseline justify-between border-t border-border/60 pt-4">
+              <div className="flex items-baseline justify-between">
                 <dt className="text-sm font-semibold">Total</dt>
-                <dd className="text-lg font-semibold">{formatPrice(totals.total)}</dd>
+                <dd className="text-sm font-semibold">{formatPrice(totals.total)}</dd>
               </div>
             </dl>
             {savings > 0 ? (
@@ -142,13 +132,8 @@ export default function CartPage() {
                 You save {formatPrice(savings)} versus a separate delivery from each store.
               </p>
             ) : null}
-            <Button
-              variant="dark"
-              size="lg"
-              className="mt-5 w-full rounded-full"
-              onClick={() => router.push("/checkout")}
-            >
-              Checkout
+            <Button asChild variant="dark" size="lg" className="mt-5 w-full rounded-full">
+              <Link href="/checkout">Checkout</Link>
             </Button>
           </div>
         </aside>
@@ -157,15 +142,17 @@ export default function CartPage() {
   );
 }
 
-type CartLine = ReturnType<typeof import("@/lib/cart-store").useCart> extends (s: infer S) => infer R ? never : never;
-
 function StoreAccordion({
   displayName,
+  logoColor,
+  logoUrl,
   brandItemCount,
   brandLines,
   updateQuantity,
 }: {
   displayName: string;
+  logoColor: string;
+  logoUrl?: string;
   brandItemCount: number;
   brandLines: {
     lineId: string;
@@ -179,6 +166,12 @@ function StoreAccordion({
 }) {
   const [open, setOpen] = useState(true);
   const panelId = useId();
+  const initials = displayName
+    .split(/\s+/)
+    .filter((p) => p !== "&")
+    .slice(0, 2)
+    .map((p) => p[0])
+    .join("");
   return (
     <div>
       <button
@@ -188,7 +181,15 @@ function StoreAccordion({
         aria-controls={panelId}
         className="flex w-full items-center gap-3 rounded-md py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
-        <span className="min-w-0 flex-1 truncate text-sm font-semibold">{displayName}</span>
+        <StoreLogo
+          name={displayName}
+          initials={initials}
+          color={logoColor}
+          logoUrl={logoUrl}
+          className="h-12 w-12 text-sm"
+          noBorder
+        />
+        <span className="min-w-0 flex-1 truncate text-base font-semibold">{displayName}</span>
         <span className="shrink-0 text-xs text-muted-foreground">
           {brandItemCount} {brandItemCount === 1 ? "item" : "items"}
         </span>
@@ -210,12 +211,12 @@ function StoreAccordion({
                   prefetch={false}
                   className="flex min-w-0 flex-1 items-center gap-3 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
-                  <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-secondary">
+                  <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-secondary">
                     <Image
                       src={item.image}
                       alt={item.name}
                       fill
-                      sizes="48px"
+                      sizes="40px"
                       className="object-cover"
                       unoptimized={item.image.endsWith(".svg")}
                     />
@@ -266,9 +267,6 @@ function StoreAccordion({
                   >
                     <Plus className="h-3.5 w-3.5" />
                   </button>
-                  <span className="min-w-14 text-right text-sm font-semibold tabular-nums">
-                    {formatPrice(line.unitPrice * line.quantity)}
-                  </span>
                 </div>
               </li>
             );

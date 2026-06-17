@@ -100,7 +100,16 @@ function CheckoutFlow() {
                 city: "Johannesburg",
                 instructions: instructions.trim() || undefined,
               }
-            : undefined,
+            : cartAddress
+              ? {
+                  label: "Delivery",
+                  line1: cartAddress.trim(),
+                  city: "Johannesburg",
+                  lat: hub?.coordinates.lat,
+                  lng: hub?.coordinates.lng,
+                  instructions: instructions.trim() || undefined,
+                }
+              : undefined,
         },
       });
       await api(`/payments/${order.id}/confirm`, { method: "POST", token });
@@ -258,18 +267,18 @@ function CheckoutFlow() {
         </div>
 
         <aside className="lg:sticky lg:top-24 lg:self-start">
-          <div className="rounded-lg bg-secondary p-5">
+          <div>
             <h2 className="text-base font-semibold">Order summary</h2>
             <dl className="mt-4 space-y-3 text-sm">
               <Row label="Subtotal" value={formatPrice(totals.subtotal)} />
               <Row label="Delivery" value={formatPrice(totals.deliveryFee)} />
               <Row label="Service fee" value={formatPrice(totals.serviceFee)} />
               {tip > 0 ? <Row label="Tip" value={formatPrice(tip)} /> : null}
+              <div className="flex items-baseline justify-between">
+                <dt className="text-sm font-semibold">Total</dt>
+                <dd className="text-sm font-semibold">{formatPrice(grandTotal)}</dd>
+              </div>
             </dl>
-            <div className="mt-5 flex items-baseline justify-between">
-              <span className="text-sm font-semibold">Total</span>
-              <span className="text-lg font-semibold">{formatPrice(grandTotal)}</span>
-            </div>
             {needsVerify ? (
               <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-900">
                 Verify your email to place this order. Use the link we sent to{" "}

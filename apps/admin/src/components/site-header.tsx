@@ -150,6 +150,7 @@ export function SiteHeader() {
     !pathname.startsWith("/menu/bundles") &&
     !pathname.startsWith("/menu/stores");
   const isCartPage = pathname.startsWith("/cart");
+  const isCheckoutPage = pathname.startsWith("/checkout");
   const usesCompactNav = isHome || isOrderingFlow || isAuthFlow;
 
   const [navMenuOpen, setNavMenuOpen] = React.useState(false);
@@ -522,7 +523,7 @@ export function SiteHeader() {
         className={cn(
           "fixed inset-x-0 top-0 z-40 text-foreground transition-colors",
           isHome && !homeHeroOutOfSight ? "bg-transparent" : "bg-background",
-          isBrandStorePage && "hidden sm:block",
+          (isBrandStorePage || isCartPage || isCheckoutPage) && "hidden sm:block",
         )}
       >
       <div
@@ -1094,7 +1095,7 @@ export function SiteHeader() {
           aria-hidden
           className={cn(
             usesCompactNav ? "h-16" : "h-20",
-            isBrandStorePage && "hidden sm:block",
+            (isBrandStorePage || isCartPage || isCheckoutPage) && "hidden sm:block",
           )}
         />
       )}
