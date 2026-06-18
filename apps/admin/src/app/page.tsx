@@ -16,7 +16,7 @@ const FEATURE_CARDS = [
     href: "/riders",
   },
   {
-    title: "Become a merchant",
+    title: "List your store",
     body: "Attract new customers and grow sales, starting with 0% commissions for up to 30 days.",
     cta: "Sign up",
     bg: "bg-[#FCE4D8]",
@@ -82,7 +82,7 @@ export default function LandingPage() {
       </section>
 
       <WhereWeOperate />
-      <FloatingContactButton />
+      <FloatingContactButton hasBottomNav={false} />
     </main>
   );
 }

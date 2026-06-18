@@ -1199,7 +1199,7 @@ export default function MenuPage() {
 
   return (
     <div className="overflow-x-clip pb-32">
-      <section className="container pt-1 lg:hidden">
+      <section className="container pt-4 sm:pt-1 lg:hidden">
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -1444,7 +1444,7 @@ export default function MenuPage() {
         </div>
       </section>
 
-      <section className="sticky top-16 z-30 bg-background">
+      <section className="sticky top-0 z-30 bg-background sm:top-16">
         <div className="container">
           <div className="-mx-4 flex gap-2 overflow-x-auto px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {FILTERS.map((f) => {

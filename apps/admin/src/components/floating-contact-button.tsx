@@ -2,10 +2,24 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { LuHeadset as Headset, LuMail as Mail } from "react-icons/lu";
 
+const supportNumber = "27749351469";
+
+function supportMessageForPath(pathname: string) {
+  const isOrderContext =
+    pathname.startsWith("/cart") ||
+    pathname.startsWith("/checkout") ||
+    pathname.startsWith("/track") ||
+    pathname.startsWith("/orders");
+  if (isOrderContext) {
+    return "Hi Gawula support \uD83D\uDC4B\nOrder number (if any):\nWhat I need help with:";
+  }
+  return "Hi Gawula support \uD83D\uDC4B I need help with:";
+}
+
 const emailHref = "mailto:hello@gawula.co.za?subject=Gawula%20support";
-const whatsappHref = `https://wa.me/?text=${encodeURIComponent("Hi Gawula support")}`;
 
 function WhatsAppIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -15,9 +29,13 @@ function WhatsAppIcon(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
-export function FloatingContactButton() {
+export function FloatingContactButton({ hasBottomNav = true }: { hasBottomNav?: boolean }) {
   const [open, setOpen] = React.useState(false);
   const rootRef = React.useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
+  const whatsappHref = `https://wa.me/${supportNumber}?text=${encodeURIComponent(
+    supportMessageForPath(pathname),
+  )}`;
 
   React.useEffect(() => {
     if (!open) return;
@@ -39,7 +57,7 @@ export function FloatingContactButton() {
   }, [open]);
 
   return (
-    <div ref={rootRef} className="fixed bottom-20 right-4 z-30 overflow-visible md:bottom-6 md:right-8">
+    <div ref={rootRef} className={`fixed right-4 z-30 overflow-visible md:bottom-6 md:right-8 ${hasBottomNav ? "bottom-20" : "bottom-6"}`}>
       {open ? (
         <div className="absolute bottom-[calc(100%+0.75rem)] right-0 max-h-[calc(100vh-10rem)] w-48 overflow-y-auto rounded-2xl bg-background p-1 shadow-xl">
           <Link
