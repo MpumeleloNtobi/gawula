@@ -1,8 +1,12 @@
 import { InfoPage } from "@/components/info-page";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Get the app | Gawula",
-};
+export const metadata = pageMetadata({
+  title: "Get the app",
+  description:
+    "Get the Gawula app to reorder favourites in two taps and track your rider block by block. Launching soon; order on the web meanwhile.",
+  path: "/download",
+});
 
 export default function DownloadPage() {
   return (

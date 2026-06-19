@@ -1,8 +1,11 @@
 import { LaunchPartnerForm } from "@/components/launch-partner-form";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Apply to be a Launch Partner | Gawula",
-};
+export const metadata = pageMetadata({
+  title: "Launch partner application",
+  description: "Apply to become a Gawula launch partner in your area.",
+  noindex: true,
+});
 
 export default function LaunchPartnerApplyPage({
   searchParams,

@@ -1,9 +1,13 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Become a launch partner | Gawula",
-};
+export const metadata = pageMetadata({
+  title: "Launch partner programme",
+  description:
+    "Become a Gawula launch partner in your area and help bring multi-store ordering with one delivery to your community.",
+  path: "/launch-partner",
+});
 
 export default function LaunchPartnerPage({
   searchParams,

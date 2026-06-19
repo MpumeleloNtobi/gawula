@@ -2,10 +2,14 @@ import Link from "next/link";
 import { LuChevronRight as ChevronRight } from "react-icons/lu";
 import { NearbyShopLogo } from "@/components/nearby-shop";
 import { SHOPS_NEAR_YOU, shopSlug } from "@/components/nearby-shop-data";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata = {
+export const metadata = pageMetadata({
   title: "Individual stores near you",
-};
+  description:
+    "Browse individual stores near you and add items from several shops to one cart for a single Gawula delivery.",
+  path: "/menu/stores",
+});
 
 export default function AllStoresPage() {
   return (

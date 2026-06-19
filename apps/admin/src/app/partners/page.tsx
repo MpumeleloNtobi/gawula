@@ -2,10 +2,14 @@ import Link from "next/link";
 import { LuChartLine as LineChart, LuPercent as Percent } from "react-icons/lu";
 import { MdOutlineStorefront as Store } from "react-icons/md";
 import { Button } from "@/components/ui/button";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Partner with Gawula | Gawula",
-};
+export const metadata = pageMetadata({
+  title: "List your store",
+  description:
+    "Partner with Gawula to reach new customers and grow sales, starting with 0% commission for up to 30 days. Apply to list your store.",
+  path: "/partners",
+});
 
 const BENEFITS = [
   {

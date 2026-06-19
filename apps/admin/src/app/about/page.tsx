@@ -1,8 +1,12 @@
 import { InfoPage } from "@/components/info-page";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "About | Gawula",
-};
+export const metadata = pageMetadata({
+  title: "About us",
+  description:
+    "Gawula brings every store in a mall, food court or cluster into one cart, so you order from many shops and get a single delivery.",
+  path: "/about",
+});
 
 export default function AboutPage() {
   return (

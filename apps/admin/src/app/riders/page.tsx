@@ -1,10 +1,14 @@
 import Link from "next/link";
 import { LuClock as Clock, LuRoute as Route, LuWallet as Wallet } from "react-icons/lu";
 import { Button } from "@/components/ui/button";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Become a rider | Gawula",
-};
+export const metadata = pageMetadata({
+  title: "Become a rider",
+  description:
+    "Earn on your own schedule delivering with Gawula. Sign up in minutes and start picking up delivery trips near you.",
+  path: "/riders",
+});
 
 const BENEFITS = [
   {

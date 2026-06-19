@@ -1,0 +1,27 @@
+{
+  "name": "Gawula",
+  "short_name": "Gawula",
+  "description": "Food from your favourites, all in one order.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8f5f0",
+  "theme_color": "#F04419",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

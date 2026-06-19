@@ -1,10 +1,14 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { CoverageWaitlistForm } from "@/components/coverage-waitlist-form";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Check coverage | Gawula",
-};
+export const metadata = pageMetadata({
+  title: "Check coverage",
+  description:
+    "Tell us where you are and check Gawula coverage. Join the waitlist and we'll let you know when multi-store delivery reaches your area.",
+  path: "/waitlist",
+});
 
 export default function WaitlistPage({
   searchParams,

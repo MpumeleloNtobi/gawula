@@ -1,0 +1,14 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Gawula brand monogram. Pure geometry (no fonts) so it rasterises identically everywhere. -->
+  <rect width="512" height="512" fill="#F04419"/>
+  <!-- The "G" ring: a thick arc left open on the right side -->
+  <path
+    d="M 348.98 328.66 A 118 118 0 1 1 348.98 183.34"
+    fill="none"
+    stroke="#FFFFFF"
+    stroke-width="64"
+    stroke-linecap="round"
+  />
+  <!-- The "G" crossbar -->
+  <rect x="256" y="224" width="96" height="64" rx="12" fill="#FFFFFF"/>
+</svg>

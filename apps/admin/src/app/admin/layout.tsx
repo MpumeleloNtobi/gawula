@@ -1,12 +1,13 @@
-"use client";
+import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
+import { AdminFrame } from "./_components/admin-frame";
 
-import { RoleGate } from "@/components/role-gate";
-import { AdminShell } from "./_components/shell";
+export const metadata: Metadata = pageMetadata({
+  title: "Admin",
+  description: "Gawula admin console.",
+  noindex: true,
+});
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <RoleGate role="admin" title="Admin sign in">
-      <AdminShell>{children}</AdminShell>
-    </RoleGate>
-  );
+  return <AdminFrame>{children}</AdminFrame>;
 }

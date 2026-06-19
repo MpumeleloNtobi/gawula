@@ -3,6 +3,7 @@ import Link from "next/link";
 import { LocationPicker } from "@/components/location-picker";
 import { WhereWeOperate } from "@/components/where-we-operate";
 import { FloatingContactButton } from "@/components/floating-contact-button";
+import { SiteJsonLd } from "@/components/site-json-ld";
 
 const FEATURE_CARDS = [
   {
@@ -30,6 +31,7 @@ const FEATURE_CARDS = [
 export default function LandingPage() {
   return (
     <main className="overflow-x-hidden">
+      <SiteJsonLd />
       <section id="site-hero" className="relative">
         <div className="relative h-[560px] w-full overflow-hidden sm:h-[640px] lg:h-[680px]">
           <Image

@@ -1,9 +1,12 @@
 import { RiderSignupForm } from "@/components/rider-signup-form";
 import { HUBS } from "@/lib/mock-data";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Sign up to ride | Gawula",
-};
+export const metadata = pageMetadata({
+  title: "Sign up to ride",
+  description: "Apply to deliver with Gawula and start earning on your schedule.",
+  noindex: true,
+});
 
 const RIDER_AREAS = HUBS.map((hub) => ({
   id: hub.id,

@@ -1,8 +1,12 @@
 import { InfoPage } from "@/components/info-page";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Terms | Gawula",
-};
+export const metadata = pageMetadata({
+  title: "Terms of service",
+  description:
+    "Read the terms of service for using Gawula, the multi-store ordering and delivery platform.",
+  path: "/legal/terms",
+});
 
 export default function TermsPage() {
   return (

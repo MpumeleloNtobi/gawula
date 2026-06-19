@@ -1,8 +1,12 @@
 import { InfoPage } from "@/components/info-page";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Privacy | Gawula",
-};
+export const metadata = pageMetadata({
+  title: "Privacy policy",
+  description:
+    "Learn how Gawula collects, uses and protects your personal information when you order across multiple stores.",
+  path: "/legal/privacy",
+});
 
 export default function PrivacyPage() {
   return (

@@ -1,8 +1,11 @@
 import { PartnerApplicationStatus } from "@/components/partner-application-status";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Your store application | Gawula",
-};
+export const metadata = pageMetadata({
+  title: "Your store application",
+  description: "Check the status of your Gawula store application.",
+  noindex: true,
+});
 
 export default function PartnerApplicationPage() {
   return (

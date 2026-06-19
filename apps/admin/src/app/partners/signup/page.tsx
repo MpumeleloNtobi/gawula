@@ -1,9 +1,12 @@
 import { PartnerSignupForm } from "@/components/partner-signup-form";
 import { HUBS } from "@/lib/mock-data";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Add your store | Gawula",
-};
+export const metadata = pageMetadata({
+  title: "Add your store",
+  description: "Apply to list your store on Gawula and reach new customers.",
+  noindex: true,
+});
 
 const PARTNER_AREAS = HUBS.map((hub) => ({
   id: hub.id,

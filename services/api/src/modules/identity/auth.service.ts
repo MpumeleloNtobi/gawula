@@ -126,14 +126,8 @@ export class AuthService {
 </td>
 </tr>
 <tr>
-<td style="font-family:'Helvetica Neue',Arial,sans-serif;">
-<p style="margin:0 0 6px 0;font-size:13px;color:#a1a1aa;">Or open this link</p>
-<p style="margin:0 0 40px 0;font-size:13px;line-height:1.5;word-break:break-all;"><a href="${verifyUrl}" style="color:#ed4317;text-decoration:none;">${verifyUrl}</a></p>
-</td>
-</tr>
-<tr>
 <td style="border-top:1px solid #f0f0f0;padding-top:24px;font-family:'Helvetica Neue',Arial,sans-serif;">
-<p style="margin:0 0 4px 0;font-size:12px;line-height:1.6;color:#a1a1aa;">This link expires in 24 hours. If you did not create a Gawula account, you can ignore this email.</p>
+<p style="margin:0 0 4px 0;font-size:12px;line-height:1.6;color:#a1a1aa;">This confirmation link expires in 24 hours. If you did not create a Gawula account, you can ignore this email.</p>
 <p style="margin:0;font-size:12px;color:#c4c4cc;">&copy; 2026 Gawula</p>
 </td>
 </tr>

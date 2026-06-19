@@ -1,8 +1,12 @@
 import { InfoPage } from "@/components/info-page";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Careers | Gawula",
-};
+export const metadata = pageMetadata({
+  title: "Careers",
+  description:
+    "Join the team building Gawula. We're a small Johannesburg team rethinking how people order across the stores they already love.",
+  path: "/careers",
+});
 
 export default function CareersPage() {
   return (

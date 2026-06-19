@@ -1,8 +1,12 @@
 import { InfoPage } from "@/components/info-page";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Catering | Gawula",
-};
+export const metadata = pageMetadata({
+  title: "Catering and group orders",
+  description:
+    "Feed your team from several stores in one order, with one invoice and one delivery. Group ordering for workplaces is on the way.",
+  path: "/catering",
+});
 
 export default function CateringPage() {
   return (
