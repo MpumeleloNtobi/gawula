@@ -7,8 +7,15 @@ import { LuMinus as Minus, LuPlus as Plus, LuTrash2 as Trash2, LuChevronDown as 
 import { Button } from "@/components/ui/button";
 import { StoreLogo } from "@/components/store-logo";
 import { useCart, cartTotals, linesByBrand, deliveryQuoteForBrandIds } from "@/lib/cart-store";
-import { BRANDS, HUBS, getItem } from "@/lib/mock-data";
+import { useApiData } from "@/lib/use-api-data";
+import { BRANDS, getItem } from "@/lib/mock-data";
 import { formatPrice } from "@/lib/utils";
+
+type ComplexDto = {
+  id: string;
+  name: string;
+  centroid: { lat: number; lng: number };
+};
 
 export default function CartPage() {
   const lines = useCart((s) => s.lines);
@@ -16,16 +23,20 @@ export default function CartPage() {
   const updateQuantity = useCart((s) => s.updateQuantity);
   const clear = useCart((s) => s.clear);
   const hydrated = useCart((s) => s.hydrated);
+  const { data: complexes } = useApiData<ComplexDto[]>("/complexes");
   const [confirmClear, setConfirmClear] = useState(false);
-  const hub = HUBS.find((h) => h.id === hubId);
-  const totals = cartTotals(lines, hub ?? null);
+  const selectedComplex = complexes?.find((complex) => complex.id === hubId) ?? null;
+  const destination = selectedComplex
+    ? { name: selectedComplex.name, coordinates: selectedComplex.centroid }
+    : null;
+  const totals = cartTotals(lines, destination);
   const grouped = linesByBrand(lines);
   const storeCount = grouped.size;
 
   const brandIdsInOrder = Array.from(grouped.keys());
   const separateDeliveryTotal =
     storeCount > 1
-      ? brandIdsInOrder.reduce((sum, brandId) => sum + deliveryQuoteForBrandIds([brandId], hub ?? null).totalFee, 0)
+      ? brandIdsInOrder.reduce((sum, brandId) => sum + deliveryQuoteForBrandIds([brandId], destination).totalFee, 0)
       : 0;
   const savings = separateDeliveryTotal > 0 ? separateDeliveryTotal - totals.deliveryFee : 0;
 

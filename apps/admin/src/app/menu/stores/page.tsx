@@ -24,10 +24,7 @@ export default function AllStoresPage() {
               >
                 <NearbyShopLogo shop={shop} size="sm" />
                 <div className="min-w-0 flex-1">
-                  <div className="truncate font-semibold leading-snug">{shop.name}</div>
-                  {shop.badge ? (
-                    <div className="mt-0.5 text-xs font-semibold text-[#e11900]">{shop.badge}</div>
-                  ) : null}
+                  <div className="truncate text-xs font-semibold leading-snug">{shop.name}</div>
                 </div>
                 <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
               </Link>

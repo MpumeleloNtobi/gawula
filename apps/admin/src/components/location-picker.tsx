@@ -7,11 +7,17 @@ import { AddressAutocomplete, fetchPlaceLocation } from "@/components/address-au
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog";
 import { LoadingDots } from "@/components/ui/loading-dots";
-import { HUBS } from "@/lib/mock-data";
 import { useCart } from "@/lib/cart-store";
+import { useApiData } from "@/lib/use-api-data";
 import { cn } from "@/lib/utils";
 
 const MAX_HUB_KM = 25;
+
+type ComplexDto = {
+  id: string;
+  name: string;
+  centroid: { lat: number; lng: number };
+};
 
 function haversineKm(
   a: { lat: number; lng: number },
@@ -28,14 +34,14 @@ function haversineKm(
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
-function nearestHub(point: { lat: number; lng: number }) {
-  let best: (typeof HUBS)[number] | null = null;
+function nearestHub(point: { lat: number; lng: number }, complexes: ComplexDto[]) {
+  let best: ComplexDto | null = null;
   let bestKm = Infinity;
-  for (const hub of HUBS) {
-    const km = haversineKm(point, hub.coordinates);
+  for (const complex of complexes) {
+    const km = haversineKm(point, complex.centroid);
     if (km < bestKm) {
       bestKm = km;
-      best = hub;
+      best = complex;
     }
   }
   return best && bestKm <= MAX_HUB_KM ? best : null;
@@ -47,6 +53,7 @@ export function LocationPicker({ className }: { className?: string }) {
   const setCoords = useCart((s) => s.setCoords);
   const savedHub = useCart((s) => s.hub);
   const savedAddress = useCart((s) => s.address);
+  const { data: complexes } = useApiData<ComplexDto[]>("/complexes");
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const pillRef = React.useRef<HTMLDivElement>(null);
   const [query, setQuery] = React.useState("");
@@ -75,8 +82,8 @@ export function LocationPicker({ className }: { className?: string }) {
     setPendingWaitlist(area);
   };
 
-  const routeToHub = (hub: (typeof HUBS)[number], address: string) => {
-    setHub(hub.id, address);
+  const routeToHub = (complex: ComplexDto, address: string) => {
+    setHub(complex.id, address);
     router.push("/menu");
   };
 
@@ -100,7 +107,7 @@ export function LocationPicker({ className }: { className?: string }) {
         const point = await fetchPlaceLocation(apiKey, placeId);
         if (point) {
           setCoords(point);
-          const hub = nearestHub(point);
+          const hub = nearestHub(point, complexes ?? []);
           if (hub) {
             routeToHub(hub, trimmed);
             return;
@@ -114,12 +121,12 @@ export function LocationPicker({ className }: { className?: string }) {
     }
 
     const q = trimmed.toLowerCase();
-    const hub = HUBS.find(
-      (h) =>
-        h.area.toLowerCase().includes(q) || h.name.toLowerCase().includes(q)
+    const hub = (complexes ?? []).find(
+      (complex) =>
+        complex.name.toLowerCase().includes(q)
     );
     if (hub) {
-      routeToHub(hub, hub.area);
+      routeToHub(hub, trimmed);
     } else {
       confirmWaitlist(trimmed);
     }

@@ -34,7 +34,7 @@ export default function NearbyStorePage() {
   };
 
   return (
-    <main className="container pb-24 pt-12 md:pt-16">
+    <main className="container pb-24 pt-4 md:pt-4">
       <header className="flex items-center gap-5">
         <NearbyShopLogo shop={shop} />
         <div className="min-w-0">
@@ -43,9 +43,6 @@ export default function NearbyStorePage() {
             <MapPin className="h-4 w-4 shrink-0" />
             {shop.area}
           </p>
-          {shop.badge ? (
-            <p className="mt-2 text-sm font-semibold text-[#e11900]">{shop.badge}</p>
-          ) : null}
         </div>
       </header>
 

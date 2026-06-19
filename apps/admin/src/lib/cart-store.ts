@@ -9,9 +9,13 @@ import {
   MENU_ITEMS,
   getBrandDisplayName,
   getBrandLocation,
-  type Hub,
   type StoreLocation,
 } from "@/lib/mock-data";
+
+export type DeliveryDestination = {
+  name: string;
+  coordinates: { lat: number; lng: number };
+};
 
 export type CartLine = {
   lineId: string;
@@ -20,6 +24,13 @@ export type CartLine = {
   modifiers: { groupId: string; optionId: string; name: string; priceDelta: number }[];
   specialInstructions?: string;
   unitPrice: number;
+};
+
+export type SavedDeliveryLocation = {
+  id: string;
+  hubId: string;
+  address: string;
+  createdAt: number;
 };
 
 export type AddLineResult =
@@ -142,12 +153,15 @@ type CartState = {
   hub: string | null;
   address: string | null;
   coords: { lat: number; lng: number } | null;
+  savedLocations: SavedDeliveryLocation[];
   lines: CartLine[];
   drawerOpen: boolean;
   hydrated: boolean;
   setHydrated: () => void;
   setHub: (hubId: string, address: string) => void;
   setCoords: (coords: { lat: number; lng: number } | null) => void;
+  removeSavedLocation: (id: string) => void;
+  clearSavedLocations: () => void;
   addLine: (line: Omit<CartLine, "lineId">) => AddLineResult;
   updateQuantity: (lineId: string, qty: number) => void;
   removeLine: (lineId: string) => void;
@@ -161,12 +175,50 @@ export const useCart = create<CartState>()(
       hub: null,
       address: null,
       coords: null,
+      savedLocations: [],
       lines: [],
       drawerOpen: false,
       hydrated: false,
       setHydrated: () => set({ hydrated: true }),
-      setHub: (hubId, address) => set({ hub: hubId, address }),
+      setHub: (hubId, address) =>
+        set((state) => {
+          const trimmed = address.trim();
+          if (!trimmed) {
+            return { hub: hubId, address };
+          }
+
+          const existing = state.savedLocations.find(
+            (location) => location.address.toLowerCase() === trimmed.toLowerCase(),
+          );
+          const nextLocation: SavedDeliveryLocation = existing
+            ? { ...existing, hubId, address: trimmed }
+            : {
+                id: Math.random().toString(36).slice(2, 10),
+                hubId,
+                address: trimmed,
+                createdAt: Date.now(),
+              };
+
+          const remaining = state.savedLocations.filter((location) => location.id !== nextLocation.id);
+          return {
+            hub: hubId,
+            address: trimmed,
+            savedLocations: [nextLocation, ...remaining].slice(0, 12),
+          };
+        }),
       setCoords: (coords) => set({ coords }),
+      removeSavedLocation: (id) =>
+        set((state) => {
+          const remaining = state.savedLocations.filter((location) => location.id !== id);
+          const removedCurrent = state.savedLocations.some(
+            (location) => location.id === id && location.address === state.address,
+          );
+          return {
+            savedLocations: remaining,
+            ...(removedCurrent ? { address: null } : {}),
+          };
+        }),
+      clearSavedLocations: () => set({ savedLocations: [], address: null }),
       addLine: (line) => {
         const compatibility = canAddItemToCart(get().lines, line.itemId);
         if (!compatibility.ok) return compatibility;
@@ -206,9 +258,9 @@ export const useCart = create<CartState>()(
     }),
     {
       name: "foodcourt-cart",
-      version: 2,
+      version: 3,
       migrate: (persisted) => {
-        const state = (persisted ?? {}) as { lines?: CartLine[] };
+        const state = (persisted ?? {}) as { lines?: CartLine[]; savedLocations?: SavedDeliveryLocation[] };
         const merged: CartLine[] = [];
         const bySig = new Map<string, number>();
         for (const line of state.lines ?? []) {
@@ -224,14 +276,14 @@ export const useCart = create<CartState>()(
             merged.push(line);
           }
         }
-        return { ...state, lines: merged } as never;
+        return { ...state, lines: merged, savedLocations: state.savedLocations ?? [] } as never;
       },
       onRehydrateStorage: () => (state) => state?.setHydrated(),
     }
   )
 );
 
-export function deliveryQuoteForBrandIds(brandIds: string[], destination?: Hub | null): DeliveryQuote {
+export function deliveryQuoteForBrandIds(brandIds: string[], destination?: DeliveryDestination | null): DeliveryQuote {
   const locations = uniqueLocations(
     brandIds
       .map((brandId) => getBrandLocation(brandId))
@@ -345,11 +397,11 @@ export function deliveryQuoteForBrandIds(brandIds: string[], destination?: Hub |
   };
 }
 
-export function deliveryQuoteForLines(lines: CartLine[], destination?: Hub | null) {
+export function deliveryQuoteForLines(lines: CartLine[], destination?: DeliveryDestination | null) {
   return deliveryQuoteForBrandIds(cartBrandIds(lines), destination);
 }
 
-export function cartTotals(lines: CartLine[], destination?: Hub | null) {
+export function cartTotals(lines: CartLine[], destination?: DeliveryDestination | null) {
   const subtotal = lines.reduce((sum, l) => sum + l.unitPrice * l.quantity, 0);
   const deliveryQuote = deliveryQuoteForLines(lines, destination);
   const deliveryFee = lines.length > 0 ? deliveryQuote.totalFee : 0;

@@ -3,27 +3,28 @@
 import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { LuCheck as Check, LuChevronDown as ChevronDown, LuChevronLeft as ChevronLeft, LuChevronRight as ChevronRight, LuCoffee as Coffee, LuFlame as Flame, LuHeart as Heart, LuHeart as HeartFilled, LuMapPin as MapPin, LuMoon as Moon, LuSearch as Search, LuStar as Star, LuStar as StarOutline, LuTag as Tag, LuUtensilsCrossed as UtensilsCrossed, LuX as X } from "react-icons/lu";
+import { LuCheck as Check, LuChevronDown as ChevronDown, LuChevronLeft as ChevronLeft, LuChevronRight as ChevronRight, LuCoffee as Coffee, LuFlame as Flame, LuHeart as Heart, LuHeart as HeartFilled, LuMapPin as MapPin, LuMoon as Moon, LuSearch as Search, LuStar as Star, LuStar as StarOutline, LuTag as Tag, LuTrash2 as Trash, LuUtensilsCrossed as UtensilsCrossed, LuX as X } from "react-icons/lu";
 import { LuBeef as Beef, LuCakeSlice as CakeSlice, LuCookingPot as CookingPot, LuCupSoda as CupSoda, LuDrumstick as Drumstick, LuFish as Fish, LuSandwich as Hamburger, LuLeaf as Leaf, LuMedal as Medal, LuMilk as Milk, LuPizza as Pizza, LuSalad as Salad, LuSoup as Soup, LuSprout as Sprout, LuUtensils as Utensils, LuWheat as Wheat } from "react-icons/lu";
 import type { IconType } from "react-icons";
+import { AddressAutocomplete, fetchPlaceLocation } from "@/components/address-autocomplete";
 import { FloatingContactButton } from "@/components/floating-contact-button";
 import { NearbyShopLogo } from "@/components/nearby-shop";
 import { StoreLogo } from "@/components/store-logo";
 import { WalkingPickupIcon } from "@/components/walking-pickup-icon";
 import { LoadingDots } from "@/components/ui/loading-dots";
 import { SHOPS_NEAR_YOU, buildShopClusters, shopSlug } from "@/components/nearby-shop-data";
+import { useApiData } from "@/lib/use-api-data";
 
 const SHOP_CLUSTERS = buildShopClusters();
 import { cartBrandIds, deliveryQuoteForBrandIds, deliveryQuoteForLines, useCart } from "@/lib/cart-store";
-import { BRANDS, FULFILLMENT_ROUTES, HUBS, STORE_LOCATIONS, getBrandLocation } from "@/lib/mock-data";
+import { BRANDS, FULFILLMENT_ROUTES, STORE_LOCATIONS, getBrandLocation } from "@/lib/mock-data";
 import { cn, formatPrice } from "@/lib/utils";
 
-const DELIVERY_LOCATIONS = [
-  { hubId: "rosebank", name: "Erand Creek Estate", address: "14th rd, Johannesburg Ward 112, GT, 1687, ZA" },
-  { hubId: "sandton", name: "Sandton Central", address: "West Street, Sandton, Johannesburg, GT, 2196, ZA" },
-  { hubId: "melville", name: "Melville Village", address: "7th Street, Melville, Johannesburg, GT, 2092, ZA" },
-  { hubId: "parkhurst", name: "Parkhurst", address: "4th Avenue, Parkhurst, Johannesburg, GT, 2193, ZA" },
-];
+type ComplexDto = {
+  id: string;
+  name: string;
+  centroid: { lat: number; lng: number };
+};
 
 const CUISINES: { name: string; Icon: IconType }[] = [
   { name: "Burgers", Icon: Hamburger },
@@ -785,13 +786,32 @@ function haversineKm(
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
+function nearestComplex(point: { lat: number; lng: number }, complexes: ComplexDto[]) {
+  let best: ComplexDto | null = null;
+  let bestKm = Infinity;
+  for (const complex of complexes) {
+    const km = haversineKm(point, complex.centroid);
+    if (km < bestKm) {
+      bestKm = km;
+      best = complex;
+    }
+  }
+  return best;
+}
+
 export default function MenuPage() {
   const cartLines = useCart((s) => s.lines);
   const hubId = useCart((s) => s.hub);
   const setHub = useCart((s) => s.setHub);
+  const setCoords = useCart((s) => s.setCoords);
   const address = useCart((s) => s.address);
   const coords = useCart((s) => s.coords);
+  const savedLocations = useCart((s) => s.savedLocations);
+  const removeSavedLocation = useCart((s) => s.removeSavedLocation);
+  const clearSavedLocations = useCart((s) => s.clearSavedLocations);
   const cartHydrated = useCart((s) => s.hydrated);
+  const { data: complexes } = useApiData<ComplexDto[]>("/complexes");
+  const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const [mobileFulfillment, setMobileFulfillment] = React.useState<"delivery" | "pickup">("delivery");
   const [fulfillmentMenuOpen, setFulfillmentMenuOpen] = React.useState(false);
   const [fulfillmentDraft, setFulfillmentDraft] = React.useState<"delivery" | "pickup">("delivery");
@@ -824,12 +844,26 @@ export default function MenuPage() {
   const [activePopup, setActivePopup] = React.useState<FilterPopup | null>(null);
   const [popupPosition, setPopupPosition] = React.useState<{ top: number; left: number } | null>(null);
   const [likedRestaurants, setLikedRestaurants] = React.useState<Set<string>>(() => new Set());
+  const [locationSearch, setLocationSearch] = React.useState("");
+  const [locationSearchPlaceId, setLocationSearchPlaceId] = React.useState<string | null>(null);
+  const [locationSearchPending, setLocationSearchPending] = React.useState(false);
   const filterPopupRef = React.useRef<HTMLDivElement>(null);
+  const deliveryLocations = React.useMemo(
+    () =>
+      savedLocations.map((location) => ({
+        id: location.id,
+        hubId: location.hubId,
+        name: location.address.split(",")[0]?.trim() || location.address,
+        address: location.address,
+      })),
+    [savedLocations],
+  );
+  const activeComplex = complexes?.find((complex) => complex.id === hubId) ?? complexes?.[0] ?? null;
 
   const origin = React.useMemo(() => {
-    const hubCoords = hubId ? HUBS.find((hub) => hub.id === hubId)?.coordinates ?? null : null;
+    const hubCoords = activeComplex?.centroid ?? null;
     return hubCoords ?? coords;
-  }, [hubId, coords]);
+  }, [activeComplex, coords]);
 
   const locationTiles = React.useMemo(() => {
     if (!origin) {
@@ -895,6 +929,11 @@ export default function MenuPage() {
   }, []);
 
   React.useEffect(() => {
+    if (!address) return;
+    setLocationSearch((current) => current || address);
+  }, [address]);
+
+  React.useEffect(() => {
     if (!locationSheetOpen) return;
     const originalOverflow = document.body.style.overflow;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -922,21 +961,47 @@ export default function MenuPage() {
     };
   }, [fulfillmentMenuOpen]);
 
-  const activeLocation =
-    DELIVERY_LOCATIONS.find((location) => location.hubId === hubId) ?? DELIVERY_LOCATIONS[0];
-  const activeHub = HUBS.find((hub) => hub.id === hubId) ?? HUBS[0];
+  const activeLocation = address
+    ? deliveryLocations.find((location) => location.address === address) ?? null
+    : null;
   const isCustomAddress =
-    Boolean(address) && !DELIVERY_LOCATIONS.some((location) => location.address === address);
-  const deliveryName = isCustomAddress
-    ? (address as string).split(",")[0].trim()
-    : activeLocation.name;
+    Boolean(address) && !deliveryLocations.some((location) => location.address === address);
+  const deliveryName = (address ?? "").split(",")[0]?.trim() || activeLocation?.name || "";
   const fulfillmentLocationName =
-    mobileFulfillment === "delivery" ? deliveryName : activeHub.name;
+    mobileFulfillment === "delivery" ? deliveryName : activeComplex?.name ?? "";
 
-  const chooseLocation = (nextHubId: string) => {
-    const location = DELIVERY_LOCATIONS.find((option) => option.hubId === nextHubId);
-    setHub(nextHubId, location?.address ?? activeHub.area);
-    setLocationSheetOpen(false);
+  const chooseLocation = (id: string) => {
+    const location = deliveryLocations.find((option) => option.id === id);
+    if (!location) return;
+    setHub(location.hubId, location.address);
+  };
+
+  const applySearchedLocation = async () => {
+    const trimmed = locationSearch.trim();
+    if (!trimmed || !complexes || complexes.length === 0) return;
+    setLocationSearchPending(true);
+    try {
+      if (mapsApiKey && locationSearchPlaceId) {
+        const point = await fetchPlaceLocation(mapsApiKey, locationSearchPlaceId);
+        if (point) {
+          setCoords(point);
+          const nearest = nearestComplex(point, complexes);
+          if (nearest) {
+            setHub(nearest.id, trimmed);
+            return;
+          }
+        }
+      }
+
+      const fallback = complexes.find((complex) =>
+        complex.name.toLowerCase().includes(trimmed.toLowerCase()),
+      );
+      if (fallback) {
+        setHub(fallback.id, trimmed);
+      }
+    } finally {
+      setLocationSearchPending(false);
+    }
   };
 
   React.useEffect(() => {
@@ -1322,7 +1387,7 @@ export default function MenuPage() {
             <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-secondary" />
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold tracking-tight">
-                {mobileFulfillment === "delivery" ? "Delivery location" : "Pickup near"}
+                {mobileFulfillment === "delivery" ? "Delivery Location" : "Pickup near"}
               </h2>
               <button
                 type="button"
@@ -1334,6 +1399,37 @@ export default function MenuPage() {
               </button>
             </div>
             <div className="-mx-3 mt-3 grid gap-1">
+              <div className="px-3">
+                <div className="space-y-3">
+                  <AddressAutocomplete
+                    id="menu-delivery-address"
+                    value={locationSearch}
+                    onValueChange={(value) => {
+                      setLocationSearch(value);
+                      setLocationSearchPlaceId(null);
+                    }}
+                    onSelect={(value, placeId) => {
+                      setLocationSearch(value);
+                      setLocationSearchPlaceId(placeId ?? null);
+                    }}
+                    onKeyDownEnter={applySearchedLocation}
+                    placeholder="Search delivery address"
+                    containerClassName="w-full"
+                    className="h-11 w-full rounded-full border-0 bg-secondary px-4 text-sm outline-none"
+                  />
+                  <div className="flex">
+                    <button
+                      type="button"
+                      className="h-11 w-full rounded-full bg-foreground/5 px-5 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                      onClick={applySearchedLocation}
+                      disabled={locationSearchPending || !locationSearch.trim()}
+                    >
+                      Use this address
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               {mobileFulfillment === "delivery" && isCustomAddress ? (
                 <div className="flex items-start gap-3 rounded-2xl px-3 py-3 text-left">
                   <span
@@ -1354,35 +1450,70 @@ export default function MenuPage() {
                   </span>
                 </div>
               ) : null}
-              {DELIVERY_LOCATIONS.map((location) => {
-                const selected = !isCustomAddress && location.hubId === hubId;
+              {deliveryLocations.map((location) => {
+                const selected = !isCustomAddress && location.address === address;
                 return (
-                  <button
-                    key={location.hubId}
-                    type="button"
-                    role="radio"
-                    aria-checked={selected}
-                    className="flex items-start gap-3 rounded-2xl px-3 py-3 text-left hover:bg-secondary"
-                    onClick={() => chooseLocation(location.hubId)}
+                  <div
+                    key={location.id}
+                    className="flex w-full items-start justify-start gap-1 rounded-2xl px-3 py-3 text-left hover:bg-secondary"
                   >
-                    <span
-                      className={cn(
-                        "mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full border-2 bg-background",
-                        selected ? "border-foreground" : "border-muted-foreground/70",
-                      )}
-                      aria-hidden="true"
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      className="flex min-w-0 flex-1 items-start justify-start gap-3 text-left"
+                      onClick={() => chooseLocation(location.id)}
                     >
-                      {selected ? <span className="h-1.5 w-1.5 rounded-full bg-foreground" /> : null}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block font-semibold">{location.name}</span>
-                      <span className="mt-0.5 block text-sm leading-snug text-muted-foreground">
-                        {location.address}
+                      <span
+                        className={cn(
+                          "mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full border-2 bg-background",
+                          selected ? "border-foreground" : "border-muted-foreground/70",
+                        )}
+                        aria-hidden="true"
+                      >
+                        {selected ? <span className="h-1.5 w-1.5 rounded-full bg-foreground" /> : null}
                       </span>
-                    </span>
-                  </button>
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-semibold">{location.name}</span>
+                        <span className="mt-0.5 block text-sm leading-snug text-muted-foreground">
+                          {location.address}
+                        </span>
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Delete saved address"
+                      className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-secondary"
+                      onClick={() => removeSavedLocation(location.id)}
+                    >
+                      <Trash className="h-4 w-4" />
+                    </button>
+                  </div>
                 );
               })}
+              {deliveryLocations.length === 0 ? (
+                <p className="px-3 py-3 text-sm text-muted-foreground">No saved addresses yet.</p>
+              ) : null}
+              {deliveryLocations.length > 0 ? (
+                <div className="px-3 pb-1">
+                  <button
+                    type="button"
+                    className="w-full rounded-full px-3 py-2 text-sm font-semibold text-muted-foreground hover:text-foreground"
+                    onClick={clearSavedLocations}
+                  >
+                    Clear saved addresses
+                  </button>
+                </div>
+              ) : null}
+              <div className="px-3 -mb-2">
+                <button
+                  type="button"
+                  className="h-11 w-full rounded-full bg-foreground px-5 text-sm font-semibold text-background shadow-sm transition-colors hover:bg-foreground/90"
+                  onClick={() => setLocationSheetOpen(false)}
+                >
+                  Save
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1582,18 +1713,12 @@ export default function MenuPage() {
           {locationTiles.filter(
             (tile) => bundleTypeFilter.length === 0 || bundleTypeFilter.includes(tile.location.type),
           ).map((tile) => {
-            const isActive = activeLocationId === tile.location.id;
             return (
               <div key={tile.location.id} className="flex w-[200px] shrink-0 flex-col gap-3 sm:w-[260px]">
-                <button
-                  type="button"
-                  aria-pressed={isActive}
-                  onClick={() => {
-                    setActiveLocationId((current) => (current === tile.location.id ? null : tile.location.id));
-                  }}
+                <Link
+                  href={`/menu/bundles#${tile.location.id}`}
                   className={cn(
                     "relative flex aspect-[5/4] w-full items-center justify-center overflow-hidden rounded-3xl bg-[#FFF1E6] p-6 text-center text-[#3D1D00] focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-black/10",
-                    isActive && "ring-4 ring-inset ring-black/5",
                   )}
                 >
                   <div className="flex flex-col items-center gap-1">
@@ -1604,7 +1729,7 @@ export default function MenuPage() {
                       {tile.location.type === "mall" ? "Mall" : tile.location.type === "complex" ? "Complex" : "Cluster"}
                     </p>
                   </div>
-                </button>
+                </Link>
                 <div className="flex flex-col items-center gap-0.5 text-center">
                   <p className="text-sm font-medium text-foreground">
                     {tile.restaurantCount} stores in this bundle
@@ -1708,11 +1833,8 @@ export default function MenuPage() {
               <div className="grid h-24 place-items-center sm:h-36">
                 <NearbyShopLogo shop={shop} />
               </div>
-              <div className="mt-1 min-h-[3rem] text-center">
-                <div className="truncate text-sm font-semibold leading-snug">{shop.name}</div>
-                {shop.badge ? (
-                  <div className="mt-1 text-xs font-semibold text-[#e11900]">{shop.badge}</div>
-                ) : null}
+              <div className="mt-1 min-h-[1.5rem] text-center">
+                <div className="truncate text-xs font-semibold leading-snug">{shop.name}</div>
               </div>
             </Link>
           ))}

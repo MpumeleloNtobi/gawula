@@ -4,7 +4,7 @@ import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams, notFound } from "next/navigation";
-import { LuCheck as Check, LuMapPin as MapPin, LuPlus as Plus } from "react-icons/lu";
+import { LuMapPin as MapPin, LuMinus as Minus, LuPlus as Plus } from "react-icons/lu";
 import { NearbyShopLogo } from "@/components/nearby-shop";
 import { getNearbyShopBySlug, shopSlug } from "@/components/nearby-shop-data";
 import { canAddBrandToCart, useCart } from "@/lib/cart-store";
@@ -23,7 +23,7 @@ export default function NearbyStoreCategoryPage() {
 
   const lines = useCart((s) => s.lines);
   const addLine = useCart((s) => s.addLine);
-  const [addedItemId, setAddedItemId] = React.useState<string | null>(null);
+  const updateQuantity = useCart((s) => s.updateQuantity);
   const [notice, setNotice] = React.useState<string | null>(null);
 
   const compatibility = React.useMemo(() => canAddBrandToCart(lines, brandId), [brandId, lines]);
@@ -35,29 +35,20 @@ export default function NearbyStoreCategoryPage() {
       return;
     }
     setNotice(null);
-    setAddedItemId(item.id);
-    window.setTimeout(() => setAddedItemId((current) => (current === item.id ? null : current)), 1400);
   };
 
   return (
-    <main className="container pb-24 pt-12 md:pt-16">
+    <main className="container pb-24 pt-4 md:pt-4">
       <header className="flex items-center gap-5">
         <Link href={`/menu/stores/${slug}`} aria-label={`Back to ${shop.name}`}>
           <NearbyShopLogo shop={shop} />
         </Link>
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight">{section.title}</h1>
-          <div className="mt-2 flex flex-col gap-0.5 text-sm font-medium text-muted-foreground sm:flex-row sm:items-center sm:gap-1.5">
-            <Link
-              href={`/menu/stores/${slug}`}
-              className="inline-flex items-center gap-1.5 font-semibold text-foreground transition-opacity hover:opacity-70"
-            >
-              <MapPin className="h-4 w-4 shrink-0" />
-              {shop.name}
-            </Link>
-            <span aria-hidden className="hidden sm:inline">·</span>
-            <span className="pl-[1.375rem] sm:pl-0">{shop.area}</span>
-          </div>
+          <h1 className="text-2xl font-semibold tracking-tight">{shop.name}</h1>
+          <p className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+            <MapPin className="h-4 w-4 shrink-0" />
+            {shop.area}
+          </p>
         </div>
       </header>
 
@@ -92,32 +83,52 @@ export default function NearbyStoreCategoryPage() {
       ) : null}
 
       <div className="mt-8 flex flex-wrap gap-4">
-        {section.items.map((item) => (
-          <article key={item.id} className="w-40 sm:w-44">
-            <div className="relative aspect-square overflow-hidden rounded-xl border bg-white">
-              <Image src={item.image} alt={item.name} fill sizes="176px" className="object-cover" />
-              <button
-                type="button"
-                aria-label={addedItemId === item.id ? `${item.name} added to cart` : `Add ${item.name} to cart`}
-                title={compatibility.ok ? undefined : compatibility.reason}
-                disabled={!compatibility.ok}
-                onClick={() => quickAdd(item)}
-                className={cn(
-                  "absolute bottom-2 right-2 grid h-9 w-9 place-items-center rounded-full border border-border shadow-md transition-transform hover:scale-105 disabled:opacity-40 disabled:hover:scale-100",
-                  addedItemId === item.id ? "bg-primary text-primary-foreground" : "bg-background text-foreground",
-                )}
-              >
-                {addedItemId === item.id ? (
-                  <Check className="h-4 w-4" />
+        {section.items.map((item) => {
+          const line = lines.find((l) => l.itemId === item.id && l.modifiers.length === 0);
+          const quantity = line?.quantity ?? 0;
+
+          return (
+            <article key={item.id} className="w-40 sm:w-44">
+              <div className="relative aspect-square overflow-hidden rounded-xl border bg-white">
+                <Image src={item.image} alt={item.name} fill sizes="176px" className="object-cover" />
+                {quantity > 0 ? (
+                  <div className="absolute bottom-2 right-2 flex h-9 items-center gap-0.5 rounded-full border border-border bg-background px-1 text-foreground shadow-md">
+                    <button
+                      type="button"
+                      aria-label={`Decrease ${item.name}`}
+                      onClick={() => updateQuantity(line!.lineId, quantity - 1)}
+                      className="grid h-7 w-7 place-items-center rounded-full transition-colors hover:bg-secondary"
+                    >
+                      <Minus className="h-4 w-4" />
+                    </button>
+                    <span className="min-w-[1.25rem] text-center text-sm font-medium tabular-nums">{quantity}</span>
+                    <button
+                      type="button"
+                      aria-label={`Increase ${item.name}`}
+                      onClick={() => updateQuantity(line!.lineId, quantity + 1)}
+                      className="grid h-7 w-7 place-items-center rounded-full transition-colors hover:bg-secondary"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
                 ) : (
-                  <Plus className="h-4 w-4" />
+                  <button
+                    type="button"
+                    aria-label={`Add ${item.name} to cart`}
+                    title={compatibility.ok ? undefined : compatibility.reason}
+                    disabled={!compatibility.ok}
+                    onClick={() => quickAdd(item)}
+                    className="absolute bottom-2 right-2 grid h-9 w-9 place-items-center rounded-full border border-border bg-background text-foreground shadow-md transition-transform hover:scale-105 disabled:opacity-40 disabled:hover:scale-100"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
                 )}
-              </button>
-            </div>
-            <div className="mt-2 text-sm font-semibold">{formatPrice(item.price)}</div>
-            <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">{item.name}</p>
-          </article>
-        ))}
+              </div>
+              <div className="mt-2 text-sm font-semibold">{formatPrice(item.price)}</div>
+              <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">{item.name}</p>
+            </article>
+          );
+        })}
       </div>
     </main>
   );

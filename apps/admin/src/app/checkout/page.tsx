@@ -11,11 +11,16 @@ import { useCart, cartTotals, linesByBrand, cartFulfillmentContext, resolveOrder
 import { useAuth } from "@/lib/auth-store";
 import { useApiData } from "@/lib/use-api-data";
 import { api, ApiError } from "@/lib/api";
-import { HUBS } from "@/lib/mock-data";
 import { formatPrice, cn } from "@/lib/utils";
 import { RoleGate } from "@/components/role-gate";
 
 const TIP_OPTIONS = [0, 1000, 2000, 5000];
+
+type ComplexDto = {
+  id: string;
+  name: string;
+  centroid: { lat: number; lng: number };
+};
 
 export default function CheckoutPage() {
   return (
@@ -34,13 +39,17 @@ function CheckoutFlow() {
   const token = useAuth((s) => s.token);
   const authHydrated = useAuth((s) => s.hydrated);
   const principal = useAuth((s) => s.principal);
-  const { data: complexes } = useApiData<{ id: string }[]>("/complexes", { token });
-  const complexId = complexes?.[0]?.id ?? null;
+  const { data: complexes } = useApiData<ComplexDto[]>("/complexes", { token });
+  const selectedComplex = complexes?.find((complex) => complex.id === hubId) ?? complexes?.[0] ?? null;
+  const complexId = selectedComplex?.id ?? null;
   const needsVerify =
     authHydrated && principal?.roles?.includes("customer") && principal.emailVerified === false;
-  const totals = cartTotals(lines, HUBS.find((h) => h.id === hubId) ?? null);
+  const totals = cartTotals(
+    lines,
+    selectedComplex ? { name: selectedComplex.name, coordinates: selectedComplex.centroid } : null,
+  );
   const fulfillment = cartFulfillmentContext(lines);
-  const hub = HUBS.find((h) => h.id === hubId);
+  const hubCoordinates = selectedComplex?.centroid;
   const storeCount = linesByBrand(lines).size;
   const itemLabel = `${totals.itemCount} ${totals.itemCount === 1 ? "item" : "items"}`;
 
@@ -105,8 +114,8 @@ function CheckoutFlow() {
                   label: "Delivery",
                   line1: cartAddress.trim(),
                   city: "Johannesburg",
-                  lat: hub?.coordinates.lat,
-                  lng: hub?.coordinates.lng,
+                  lat: hubCoordinates?.lat,
+                  lng: hubCoordinates?.lng,
                   instructions: instructions.trim() || undefined,
                 }
               : undefined,

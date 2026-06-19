@@ -140,7 +140,7 @@ export default function AllBundlesPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {visibleTiles.map((tile) => {
           return (
-            <div key={tile.location.id} className="flex flex-col gap-3">
+            <div id={tile.location.id} key={tile.location.id} className="flex scroll-mt-28 flex-col gap-3">
               <Link
                 href={`/menu?location=${tile.location.id}`}
                 className="relative flex aspect-[5/4] w-full items-center justify-center overflow-hidden rounded-3xl bg-[#FFF1E6] p-6 text-center text-[#3D1D00]"

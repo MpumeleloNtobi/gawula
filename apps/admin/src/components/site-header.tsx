@@ -4,15 +4,16 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { IoFastFoodOutline } from "react-icons/io5";
-import { LuArrowLeft as ArrowLeft, LuBike as Bike, LuChevronDown as ChevronDown, LuChevronLeft as ChevronLeft, LuChevronRight as ChevronRight, LuClock as Clock, LuLayoutGrid as Grid, LuHouse as Home, LuMapPin as MapPin, LuMenu as Menu, LuUser as Person, LuReceiptText as ReceiptText, LuSearch as Search, LuShoppingBag as ShoppingBag, LuShoppingCart as ShoppingCart, LuWallet as Wallet, LuX as X } from "react-icons/lu";
+import { LuArrowLeft as ArrowLeft, LuBike as Bike, LuChevronDown as ChevronDown, LuChevronLeft as ChevronLeft, LuChevronRight as ChevronRight, LuClock as Clock, LuLayoutGrid as Grid, LuHouse as Home, LuMapPin as MapPin, LuMenu as Menu, LuUser as Person, LuReceiptText as ReceiptText, LuSearch as Search, LuShoppingBag as ShoppingBag, LuShoppingCart as ShoppingCart, LuTrash2 as Trash, LuWallet as Wallet, LuX as X } from "react-icons/lu";
 import { MdOutlineStorefront as Store } from "react-icons/md";
+import { AddressAutocomplete, fetchPlaceLocation } from "@/components/address-autocomplete";
 import { useCart } from "@/lib/cart-store";
 import { useAuth, homePathForRole, type PrincipalRole } from "@/lib/auth-store";
 import { useRiderStore } from "@/lib/rider-store";
 import { api, ApiError } from "@/lib/api";
+import { useApiData } from "@/lib/use-api-data";
 import { AvailabilityMenu } from "@/components/availability-menu";
 import { ADMIN_NAV_SECTIONS, isAdminSectionActive } from "@/app/admin/_lib/nav-sections";
-import { HUBS } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
 const navMenuLinks = [
@@ -57,28 +58,36 @@ const mobileBottomLinks = [
   },
 ];
 
-const deliveryLocations = [
-  {
-    hubId: "rosebank",
-    name: "Erand Creek Estate",
-    address: "14th rd, Johannesburg Ward 112, GT, 1687, ZA",
-  },
-  {
-    hubId: "sandton",
-    name: "Sandton Central",
-    address: "West Street, Sandton, Johannesburg, GT, 2196, ZA",
-  },
-  {
-    hubId: "melville",
-    name: "Melville Village",
-    address: "7th Street, Melville, Johannesburg, GT, 2092, ZA",
-  },
-  {
-    hubId: "parkhurst",
-    name: "Parkhurst",
-    address: "4th Avenue, Parkhurst, Johannesburg, GT, 2193, ZA",
-  },
-];
+type ComplexDto = {
+  id: string;
+  name: string;
+  centroid: { lat: number; lng: number };
+};
+
+function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+  const R = 6371;
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+  const lat1 = (a.lat * Math.PI) / 180;
+  const lat2 = (b.lat * Math.PI) / 180;
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+function nearestComplex(point: { lat: number; lng: number }, complexes: ComplexDto[]) {
+  let best: ComplexDto | null = null;
+  let bestKm = Infinity;
+  for (const complex of complexes) {
+    const km = haversineKm(point, complex.centroid);
+    if (km < bestKm) {
+      bestKm = km;
+      best = complex;
+    }
+  }
+  return best;
+}
 
 const scheduleDays = [
   { id: "today", label: "Today", date: "28 May" },
@@ -111,11 +120,26 @@ export function SiteHeader() {
   const lines = useCart((s) => s.lines);
   const hubId = useCart((s) => s.hub);
   const setHub = useCart((s) => s.setHub);
+  const setCoords = useCart((s) => s.setCoords);
   const address = useCart((s) => s.address);
+  const savedLocations = useCart((s) => s.savedLocations);
+  const removeSavedLocation = useCart((s) => s.removeSavedLocation);
+  const clearSavedLocations = useCart((s) => s.clearSavedLocations);
   const cartHydrated = useCart((s) => s.hydrated);
+  const { data: complexes } = useApiData<ComplexDto[]>("/complexes");
+  const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const itemCount = lines.reduce((sum, line) => sum + line.quantity, 0);
-  const hub = HUBS.find((h) => h.id === hubId);
-  const activeHub = hub ?? HUBS[0];
+  const deliveryLocations = React.useMemo(
+    () =>
+      savedLocations.map((location) => ({
+        id: location.id,
+        hubId: location.hubId,
+        name: location.address.split(",")[0]?.trim() || location.address,
+        address: location.address,
+      })),
+    [savedLocations],
+  );
+  const activeHub = complexes?.find((complex) => complex.id === hubId) ?? complexes?.[0] ?? null;
 
   const authHydrated = useAuth((s) => s.hydrated);
   const principal = useAuth((s) => s.principal);
@@ -152,6 +176,7 @@ export function SiteHeader() {
   const isCartPage = pathname.startsWith("/cart");
   const isCheckoutPage = pathname.startsWith("/checkout");
   const isMenuListPage = pathname === "/menu";
+  const isStoreDetailsPage = pathname.startsWith("/menu/stores/");
   const usesCompactNav = isHome || isOrderingFlow || isAuthFlow;
 
   const [navMenuOpen, setNavMenuOpen] = React.useState(false);
@@ -167,6 +192,9 @@ export function SiteHeader() {
   const [pendingScheduledTime, setPendingScheduledTime] = React.useState(scheduleTimeSlots[0]);
   const [scheduleModalOpen, setScheduleModalOpen] = React.useState(false);
   const [headerSearch, setHeaderSearch] = React.useState("");
+  const [locationSearch, setLocationSearch] = React.useState("");
+  const [locationSearchPlaceId, setLocationSearchPlaceId] = React.useState<string | null>(null);
+  const [locationSearchPending, setLocationSearchPending] = React.useState(false);
   const [homeHeroOutOfSight, setHomeHeroOutOfSight] = React.useState(false);
   const closeNavMenuButtonRef = React.useRef<HTMLButtonElement>(null);
   const scheduleDayListRef = React.useRef<HTMLDivElement>(null);
@@ -199,6 +227,11 @@ export function SiteHeader() {
       window.removeEventListener("popstate", syncSearch);
     };
   }, [pathname]);
+
+  React.useEffect(() => {
+    if (!address) return;
+    setLocationSearch((current) => current || address);
+  }, [address]);
 
   React.useEffect(() => {
     if (!deliveryMenuOpen) return;
@@ -272,14 +305,11 @@ export function SiteHeader() {
     };
   }, [isHome]);
 
-  const activeLocation =
-    deliveryLocations.find((location) => location.hubId === activeHub.id) ?? deliveryLocations[0];
-  const isCustomAddress =
-    Boolean(address) && !deliveryLocations.some((location) => location.address === address);
-  const deliveryName = isCustomAddress
-    ? (address as string).split(",")[0].trim()
-    : activeLocation.name;
-  const deliverySubtitle = isCustomAddress ? (address as string) : activeLocation.address;
+  const activeLocation = address
+    ? deliveryLocations.find((location) => location.address === address) ?? null
+    : null;
+  const deliveryName = (address ?? "").split(",")[0]?.trim() || activeLocation?.name || "";
+  const deliverySubtitle = address ?? activeLocation?.address ?? "";
   const scheduledDay = scheduleDays.find((day) => day.id === scheduledDayId) ?? scheduleDays[0];
   const deliveryTimeLabel = deliveryTiming === "now" ? "Now" : `${scheduledDay.label}, ${scheduledTime}`;
   const showMobileBottomNav =
@@ -299,10 +329,37 @@ export function SiteHeader() {
     router.push(url);
   };
 
-  const chooseHub = (hubId: string, area: string) => {
-    const location = deliveryLocations.find((option) => option.hubId === hubId);
-    setHub(hubId, location?.address ?? area);
-    setLocationChoicesOpen(false);
+  const chooseSavedLocation = (id: string) => {
+    const location = deliveryLocations.find((option) => option.id === id);
+    if (!location) return;
+    setHub(location.hubId, location.address);
+  };
+
+  const applySearchedLocation = async () => {
+    const trimmed = locationSearch.trim();
+    if (!trimmed || !complexes || complexes.length === 0) return;
+    setLocationSearchPending(true);
+    try {
+      if (mapsApiKey && locationSearchPlaceId) {
+        const point = await fetchPlaceLocation(mapsApiKey, locationSearchPlaceId);
+        if (point) {
+          setCoords(point);
+          const nearest = nearestComplex(point, complexes);
+          if (nearest) {
+            setHub(nearest.id, trimmed);
+            return;
+          }
+        }
+      }
+      const fallback = complexes.find((complex) =>
+        complex.name.toLowerCase().includes(trimmed.toLowerCase()),
+      );
+      if (fallback) {
+        setHub(fallback.id, trimmed);
+      }
+    } finally {
+      setLocationSearchPending(false);
+    }
   };
 
   const openScheduleModal = () => {
@@ -524,6 +581,7 @@ export function SiteHeader() {
         className={cn(
           "fixed inset-x-0 top-0 z-40 text-foreground transition-colors",
           isHome && !homeHeroOutOfSight ? "bg-transparent" : "bg-background",
+          isStoreDetailsPage && "hidden",
           (isBrandStorePage || isCartPage || isCheckoutPage || isMenuListPage) && "hidden sm:block",
         )}
       >
@@ -608,7 +666,7 @@ export function SiteHeader() {
                         {cartHydrated
                           ? fulfillment === "delivery"
                             ? deliveryName
-                            : activeHub.name
+                            : activeHub?.name ?? ""
                           : null}
                       </span>
                       <span className="text-muted-foreground">•</span>
@@ -650,32 +708,95 @@ export function SiteHeader() {
                         </div>
 
                         {locationChoicesOpen ? (
-                          <div className="mt-4 grid gap-1 rounded-2xl bg-secondary p-1">
-                            {deliveryLocations.map((location) => {
-                              const optionHub = HUBS.find((option) => option.id === location.hubId);
-                              return (
+                          <div className="mt-4 space-y-2">
+                            <div className="space-y-3">
+                              <AddressAutocomplete
+                                id="header-delivery-address"
+                                value={locationSearch}
+                                onValueChange={(value) => {
+                                  setLocationSearch(value);
+                                  setLocationSearchPlaceId(null);
+                                }}
+                                onSelect={(value, placeId) => {
+                                  setLocationSearch(value);
+                                  setLocationSearchPlaceId(placeId ?? null);
+                                }}
+                                onKeyDownEnter={applySearchedLocation}
+                                placeholder="Search delivery address"
+                                containerClassName="w-full"
+                                className="h-11 w-full rounded-full border-0 bg-secondary px-4 text-sm outline-none"
+                              />
+                              <div className="flex">
                                 <button
-                                  key={location.hubId}
                                   type="button"
-                                  className={cn(
-                                    "rounded-xl px-3 py-2.5 text-left",
-                                    location.hubId === activeHub.id && "bg-background shadow-sm",
-                                  )}
-                                  onClick={() =>
-                                    chooseHub(location.hubId, optionHub?.area ?? location.address)
-                                  }
+                                  className="h-11 w-full rounded-full bg-foreground/5 px-5 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                                  onClick={applySearchedLocation}
+                                  disabled={locationSearchPending || !locationSearch.trim()}
                                 >
-                                  <span className="block font-semibold">{location.name}</span>
-                                  <span className="block text-xs text-muted-foreground">
-                                    {location.address}
-                                  </span>
+                                  Use this address
                                 </button>
-                              );
-                            })}
+                              </div>
+                            </div>
+
+                            <div className="grid gap-1 rounded-2xl bg-secondary p-1">
+                              {deliveryLocations.map((location) => {
+                                const selected = location.address === address;
+                                return (
+                                  <div
+                                    key={location.id}
+                                    className={cn(
+                                      "flex w-full items-start justify-start gap-1 rounded-xl px-3 py-2 text-left",
+                                      selected && "bg-background shadow-sm",
+                                    )}
+                                  >
+                                    <button
+                                      type="button"
+                                      className="min-w-0 flex-1 text-left"
+                                      onClick={() => chooseSavedLocation(location.id)}
+                                    >
+                                      <span className="block font-semibold">{location.name}</span>
+                                      <span className="block text-xs text-muted-foreground">
+                                        {location.address}
+                                      </span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      aria-label="Delete saved address"
+                                      className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-secondary"
+                                      onClick={() => removeSavedLocation(location.id)}
+                                    >
+                                      <Trash className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                              {deliveryLocations.length === 0 ? (
+                                <p className="px-3 py-2 text-xs text-muted-foreground">No saved addresses yet.</p>
+                              ) : null}
+                            </div>
+
+                            {deliveryLocations.length > 0 ? (
+                              <button
+                                type="button"
+                                className="w-full rounded-full px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground"
+                                onClick={clearSavedLocations}
+                              >
+                                Clear saved addresses
+                              </button>
+                            ) : null}
+                            <button
+                              type="button"
+                              className="mt-3 h-11 w-full rounded-full bg-foreground px-5 text-sm font-semibold text-background shadow-sm transition-colors hover:bg-foreground/90"
+                              onClick={() => {
+                                setLocationChoicesOpen(false);
+                              }}
+                            >
+                              Save
+                            </button>
                           </div>
                         ) : null}
 
-                        <div className="mt-5 flex items-center justify-between gap-3">
+                        <div className="mt-0 flex items-center justify-between gap-3">
                           <div
                             className={cn(
                               "inline-flex items-center gap-2 text-sm font-semibold",
@@ -1096,6 +1217,7 @@ export function SiteHeader() {
           aria-hidden
           className={cn(
             usesCompactNav ? "h-16" : "h-20",
+            isStoreDetailsPage && "hidden",
             (isBrandStorePage || isCartPage || isCheckoutPage || isMenuListPage) && "hidden sm:block",
           )}
         />
